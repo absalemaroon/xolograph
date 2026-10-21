@@ -1,11 +1,11 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { fileURLToPath } from 'node:url';
+import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vitest/config';
 
-// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  server: {
-    port: 3000,
-    strictPort: true,
-  }
-})
+  resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
+  server: { port: 3000, strictPort: true },
+  build: { target: 'es2020', sourcemap: false },
+  test: { environment: 'node', include: ['src/**/*.test.ts'], exclude: ['src/_legacy/**'] },
+});
