@@ -1,0 +1,6 @@
+{
+  "identifier": "default",
+  "description": "Capabilities of the main window. File dialogs and engine control are exposed only through the app's own commands.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}
