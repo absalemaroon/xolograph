@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "graphology": "^0.25.4",
+    "graphology-layout-forceatlas2": "^0.10.1",
     "lucide-react": "^0.383.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

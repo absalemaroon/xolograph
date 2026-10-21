@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/xolograph/backend/pkg/api"
+	"github.com/xolograph/backend/pkg/chain"
 	"github.com/xolograph/backend/pkg/store"
 )
 
@@ -25,6 +26,8 @@ func main() {
 	dataDir := flag.String("data-dir", "", "application data directory (default: user config dir/Xolograph)")
 	port := flag.Int("port", 0, "loopback port (0 = random)")
 	token := flag.String("token", "", "API token (default: random; use a fixed value only for development)")
+	rpcURL := flag.String("rpc-url", envOr("XOLOGRAPH_RPC_URL", "https://ethereum-rpc.publicnode.com"), "Ethereum JSON-RPC endpoint")
+	historyURL := flag.String("history-url", envOr("XOLOGRAPH_HISTORY_URL", "https://eth.blockscout.com"), "Blockscout v2 base URL for address history and labels (empty disables)")
 	flag.Parse()
 
 	if *dataDir == "" {
@@ -52,7 +55,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("listen: %v", err)
 	}
-	srv := &http.Server{Handler: api.New(st, *token).Handler(), ReadHeaderTimeout: 10 * time.Second}
+	srv := &http.Server{Handler: api.New(st, *token, newChain(*rpcURL, *historyURL)).Handler(), ReadHeaderTimeout: 10 * time.Second}
 
 	_ = json.NewEncoder(os.Stdout).Encode(map[string]string{"addr": ln.Addr().String(), "token": *token})
 
@@ -67,4 +70,19 @@ func main() {
 	if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("serve: %v", err)
 	}
+}
+
+func envOr(k, def string) string {
+	if v := os.Getenv(k); v != "" {
+		return v
+	}
+	return def
+}
+
+func newChain(rpcURL, historyURL string) *chain.Ethereum {
+	var bs *chain.Blockscout
+	if historyURL != "" {
+		bs = chain.NewBlockscout(historyURL)
+	}
+	return chain.NewEthereum(chain.NewRPC(rpcURL), bs)
 }

@@ -24,3 +24,36 @@ export interface AuditEntry {
   id: number; timestamp: string; actor: string; action: string;
   entityType: string; entityId: string; detail: string; entryHash: string;
 }
+
+export interface Provenance {
+  source: string; endpoint: string; query: string; retrievedAt: string; payloadSha256: string; coverage: string;
+}
+export interface ThirdPartyLabel { name: string; kind: string; source: string }
+export interface AddressSummary {
+  address: string; network: string; balanceWei: string; nonce: number; isContract: boolean;
+  thirdPartyLabels: ThirdPartyLabel[]; notes: string[]; provenance: Provenance[];
+}
+export interface Transfer {
+  txHash: string; logIndex: number; kind: string; from: string; to: string; value: string;
+  decimals: number; symbol: string; tokenAddress?: string; tokenId?: string;
+  timestamp: string; blockNumber: number; status: string;
+}
+export interface ActivityPage {
+  address: string; kind: 'native' | 'token'; items: Transfer[]; nextCursor: string; provenance: Provenance;
+}
+export interface TokenTransfer {
+  logIndex: number; standard: string; token: string; symbol: string; decimals: number;
+  from: string; to: string; value: string; tokenId?: string;
+}
+export interface ChainTx {
+  hash: string; network: string; status: string; blockNumber: number; blockHash?: string; timestamp?: string;
+  from: string; to: string; contractCreated?: string; valueWei: string; gasUsed: number;
+  gasPriceWei: string; feeWei: string; tokenTransfers: TokenTransfer[]; notes: string[]; provenance: Provenance[];
+}
+export interface Label {
+  id: string; caseId: string; caseTitle: string; address: string; network: string; name: string;
+  category: string; source: string; confidence: string; basis: string; createdBy: string; createdAt: string;
+}
+export interface ReportBundle {
+  generatedAt: string; markdown: string; markdownSha256: string; json: string; jsonSha256: string;
+}

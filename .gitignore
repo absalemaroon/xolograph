@@ -1,3 +1,4 @@
+# --- dependencies / build output ---
 node_modules/
 .next/
 dist/
@@ -5,10 +6,32 @@ build/
 out/
 .turbo/
 coverage/
+.vite/
+*.tsbuildinfo
+
+# --- environment & secrets ---
 .env
 .env.local
 .env.*.local
+
+# --- logs / OS / editors ---
 *.log
 .DS_Store
 .vscode/
 .idea/
+
+# --- Xolograph runtime data (never commit evidence or case databases) ---
+.data/
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+
+# --- Go ---
+/backend/bin/
+*.exe
+*.test
+*.out
+
+# --- Tauri (Stage 4) ---
+/frontend/src-tauri/target/

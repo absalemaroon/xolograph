@@ -174,6 +174,22 @@ var migrations = []string{
 		key TEXT PRIMARY KEY,
 		value TEXT NOT NULL
 	);`,
+	// v2: analyst entity labels (always with a stated basis and source)
+	`CREATE TABLE entity_labels (
+		id TEXT PRIMARY KEY,
+		case_id TEXT NOT NULL REFERENCES cases(id) ON DELETE RESTRICT,
+		address TEXT NOT NULL,
+		network TEXT NOT NULL DEFAULT 'ethereum-mainnet',
+		name TEXT NOT NULL,
+		category TEXT NOT NULL DEFAULT 'UNCATEGORIZED',
+		source TEXT NOT NULL CHECK (source IN ('ANALYST_ASSERTION','THIRD_PARTY_PROVIDER','VERIFIED_SOURCE')),
+		confidence TEXT NOT NULL CHECK (confidence IN ('LOW','MEDIUM','HIGH')),
+		basis TEXT NOT NULL,
+		created_by TEXT NOT NULL,
+		created_at TEXT NOT NULL
+	);
+	CREATE INDEX idx_labels_address ON entity_labels(address);
+	CREATE INDEX idx_labels_case ON entity_labels(case_id);`,
 }
 
 func (s *Store) migrate(ctx context.Context) error {

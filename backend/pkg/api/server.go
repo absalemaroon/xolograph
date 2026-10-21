@@ -2,6 +2,7 @@
 package api
 
 import (
+	"context"
 	"crypto/subtle"
 	"encoding/json"
 	"errors"
@@ -10,15 +11,26 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/xolograph/backend/pkg/chain"
 	"github.com/xolograph/backend/pkg/store"
 )
+
+// ChainProvider is the blockchain data source used by the explorer endpoints.
+type ChainProvider interface {
+	Address(ctx context.Context, addr string) (*chain.AddressSummary, error)
+	Transaction(ctx context.Context, hash string) (*chain.Transaction, error)
+	Activity(ctx context.Context, addr, kind, cursor string) (*chain.ActivityPage, error)
+}
 
 type Server struct {
 	st    *store.Store
 	token string
+	chain ChainProvider // may be nil: chain endpoints then answer 503
 }
 
-func New(st *store.Store, token string) *Server { return &Server{st: st, token: token} }
+func New(st *store.Store, token string, cp ChainProvider) *Server {
+	return &Server{st: st, token: token, chain: cp}
+}
 
 var allowedOrigins = map[string]bool{
 	"http://localhost:3000":  true, // vite dev
@@ -44,6 +56,12 @@ func (s *Server) Handler() http.Handler {
 	m.HandleFunc("POST /api/cases/{id}/findings", s.addFinding)
 	m.HandleFunc("POST /api/evidence/{id}/verify", s.verifyEvidence)
 	m.HandleFunc("GET /api/evidence/{id}/custody", s.custody)
+	m.HandleFunc("GET /api/chain/address/{addr}", s.chainAddress)
+	m.HandleFunc("GET /api/chain/address/{addr}/activity", s.chainActivity)
+	m.HandleFunc("GET /api/chain/tx/{hash}", s.chainTx)
+	m.HandleFunc("GET /api/labels", s.listLabels)
+	m.HandleFunc("POST /api/cases/{id}/labels", s.addLabel)
+	m.HandleFunc("POST /api/cases/{id}/report", s.exportReport)
 	m.HandleFunc("GET /api/audit", s.audit)
 	m.HandleFunc("GET /api/audit/verify", s.verifyAudit)
 	return s.middleware(m)
@@ -89,10 +107,13 @@ func writeErr(w http.ResponseWriter, code int, msg string) {
 
 func fail(w http.ResponseWriter, err error) {
 	switch {
-	case errors.Is(err, store.ErrNotFound):
+	case errors.Is(err, store.ErrNotFound), errors.Is(err, chain.ErrNotFound):
 		writeErr(w, 404, "not found")
-	case errors.Is(err, store.ErrInvalid):
+	case errors.Is(err, store.ErrInvalid), errors.Is(err, chain.ErrInvalid):
 		writeErr(w, 400, err.Error())
+	case errors.Is(err, chain.ErrUpstream):
+		log.Printf("upstream error: %v", err)
+		writeErr(w, 502, err.Error())
 	default:
 		log.Printf("internal error: %v", err)
 		writeErr(w, 500, "internal error")
@@ -287,6 +308,94 @@ func (s *Server) audit(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) verifyAudit(w http.ResponseWriter, r *http.Request) {
 	v, err := s.st.VerifyAuditChain(r.Context())
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, 200, v)
+}
+
+func (s *Server) noChain(w http.ResponseWriter) bool {
+	if s.chain == nil {
+		writeErr(w, 503, "blockchain data source not configured")
+		return true
+	}
+	return false
+}
+
+func (s *Server) chainAddress(w http.ResponseWriter, r *http.Request) {
+	if s.noChain(w) {
+		return
+	}
+	v, err := s.chain.Address(r.Context(), r.PathValue("addr"))
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, 200, v)
+}
+
+func (s *Server) chainActivity(w http.ResponseWriter, r *http.Request) {
+	if s.noChain(w) {
+		return
+	}
+	q := r.URL.Query()
+	v, err := s.chain.Activity(r.Context(), r.PathValue("addr"), q.Get("kind"), q.Get("cursor"))
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, 200, v)
+}
+
+func (s *Server) chainTx(w http.ResponseWriter, r *http.Request) {
+	if s.noChain(w) {
+		return
+	}
+	v, err := s.chain.Transaction(r.Context(), r.PathValue("hash"))
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, 200, v)
+}
+
+func (s *Server) listLabels(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	v, err := s.st.ListLabels(r.Context(), q.Get("caseId"), q.Get("address"))
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, 200, v)
+}
+
+func (s *Server) addLabel(w http.ResponseWriter, r *http.Request) {
+	var b struct {
+		actorBody
+		Address    string `json:"address"`
+		Name       string `json:"name"`
+		Category   string `json:"category"`
+		Source     string `json:"source"`
+		Confidence string `json:"confidence"`
+		Basis      string `json:"basis"`
+	}
+	if !decode(w, r, &b) {
+		return
+	}
+	v, err := s.st.AddLabel(r.Context(), store.Label{CaseID: r.PathValue("id"), Address: b.Address, Name: b.Name,
+		Category: b.Category, Source: b.Source, Confidence: b.Confidence, Basis: b.Basis}, b.Actor)
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, 201, v)
+}
+
+func (s *Server) exportReport(w http.ResponseWriter, r *http.Request) {
+	var b actorBody
+	_ = json.NewDecoder(r.Body).Decode(&b) // body optional
+	v, err := s.st.ExportReport(r.Context(), r.PathValue("id"), b.Actor)
 	if err != nil {
 		fail(w, err)
 		return

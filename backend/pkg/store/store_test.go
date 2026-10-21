@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -140,5 +141,63 @@ func TestFindings(t *testing.T) {
 	got, _ := s.GetCase(ctx, c.ID)
 	if got.FindingCount != 1 {
 		t.Fatalf("finding count %d", got.FindingCount)
+	}
+}
+
+func TestLabelsRequireBasisAndFilter(t *testing.T) {
+	ctx := context.Background()
+	s := newStore(t)
+	c, _ := s.CreateCase(ctx, "Case", "", "")
+	addr := "0xAB" + strings.Repeat("cd", 19)
+	ok := Label{CaseID: c.ID, Address: addr, Name: "Mixer deposit", Source: "ANALYST_ASSERTION", Confidence: "LOW", Basis: "funds flow from seized wallet"}
+	bad := ok
+	bad.Basis = ""
+	if _, err := s.AddLabel(ctx, bad, ""); err == nil {
+		t.Fatal("label without basis must be rejected")
+	}
+	bad = ok
+	bad.Source = "TRUST_ME"
+	if _, err := s.AddLabel(ctx, bad, ""); err == nil {
+		t.Fatal("unknown source must be rejected")
+	}
+	if _, err := s.AddLabel(ctx, ok, ""); err != nil {
+		t.Fatal(err)
+	}
+	list, _ := s.ListLabels(ctx, "", addr)
+	if len(list) != 1 || list[0].Address != strings.ToLower(addr) || list[0].CaseTitle != "Case" {
+		t.Fatalf("labels: %+v", list)
+	}
+	if other, _ := s.ListLabels(ctx, "", "0x"+strings.Repeat("0", 40)); len(other) != 0 {
+		t.Fatal("filter by address failed")
+	}
+}
+
+func TestReportExportHashesAndAudit(t *testing.T) {
+	ctx := context.Background()
+	s := newStore(t)
+	c, _ := s.CreateCase(ctx, "Report case", "d", "")
+	src := filepath.Join(t.TempDir(), "e.txt")
+	_ = os.WriteFile(src, []byte("hello"), 0o600)
+	_, _ = s.ImportEvidence(ctx, c.ID, src, "")
+	_, _ = s.AddNote(ctx, c.ID, "a note", "")
+	_, _ = s.AddFinding(ctx, Finding{CaseID: c.ID, Kind: "address", RefID: "0xabc", Title: "Wallet", SourceJSON: `{"x":1}`}, "")
+	b, err := s.ExportReport(ctx, c.ID, "analyst-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b.MarkdownSHA256 != sha(b.Markdown) || b.JSONSHA256 != sha(b.JSON) {
+		t.Fatal("digests must match exported bytes")
+	}
+	for _, want := range []string{"# Case Report: Report case", helloSHA, "Custody chain: VALID", "[ADDRESS] Wallet", "analyst-1"} {
+		if !strings.Contains(b.Markdown, want) {
+			t.Fatalf("markdown missing %q", want)
+		}
+	}
+	entries, _ := s.ListAudit(ctx, 1)
+	if len(entries) != 1 || entries[0].Action != "REPORT_EXPORTED" || !strings.Contains(entries[0].Detail, b.MarkdownSHA256) {
+		t.Fatalf("export not audited: %+v", entries)
+	}
+	if r, _ := s.VerifyAuditChain(ctx); !r.Valid {
+		t.Fatal("audit chain must stay valid")
 	}
 }

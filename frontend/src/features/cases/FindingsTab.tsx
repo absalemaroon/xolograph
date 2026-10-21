@@ -4,7 +4,7 @@ import { Badge, Button, EmptyState, ErrorBanner, Input, Label, Panel, Select, Sp
 import { useAsync } from '@/hooks/useAsync';
 import { formatUTC } from '@/lib/format';
 
-const KINDS = ['OBSERVATION', 'ADDRESS', 'TRANSACTION', 'ENTITY', 'PATH'];
+const KINDS = ['OBSERVATION', 'ADDRESS', 'TRANSACTION', 'ENTITY', 'PATH', 'GRAPH'];
 
 export function FindingsTab({ caseId, onChanged }: { caseId: string; onChanged: () => void }) {
   const { data, error, loading, reload } = useAsync(() => api.findings.list(caseId), [caseId]);

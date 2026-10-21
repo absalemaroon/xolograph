@@ -18,12 +18,12 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Intelligence',
     items: [
-      { id: 'explorer', label: 'On-chain Explorer', icon: Search, planned: true },
-      { id: 'graph', label: 'Network Graph', icon: Network, planned: true },
-      { id: 'entities', label: 'Entities', icon: Users, planned: true },
+      { id: 'explorer', label: 'On-chain Explorer', icon: Search },
+      { id: 'graph', label: 'Network Graph', icon: Network },
+      { id: 'entities', label: 'Entities', icon: Users },
     ],
   },
-  { title: 'Output', items: [{ id: 'reports', label: 'Reports', icon: FileText, planned: true }] },
+  { title: 'Output', items: [{ id: 'reports', label: 'Reports', icon: FileText }] },
   { title: 'System', items: [{ id: 'settings', label: 'Settings', icon: Settings }] },
 ];
 
