@@ -1,0 +1,95 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: backend } }
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.22'
+          cache-dependency-path: |
+            backend/go.mod
+            backend/go.sum
+      # Generates go.sum on the runner if it is not committed yet (see the lockfiles job).
+      - run: go mod tidy
+      - run: go vet ./...
+      - run: go test ./...
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 22 }
+      - run: npm install
+      - run: npm run ui:build
+      - run: npm test
+
+  # Compiles the Rust desktop shell (with and without the updater feature).
+  desktop:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 22 }
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.22'
+          cache-dependency-path: |
+            backend/go.mod
+            backend/go.sum
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with: { workspaces: src-tauri }
+      - name: Linux system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+      - run: go mod tidy
+        working-directory: backend
+      - run: npm install
+      - run: npm run ui:build
+      - run: npm run engine:build
+      - run: cargo check --manifest-path src-tauri/Cargo.toml
+      - run: cargo check --manifest-path src-tauri/Cargo.toml --features updater
+
+  # Generates and commits go.sum / package-lock.json once, so you never have to create them by hand.
+  # Runs only on pushes to main; the commit carries [skip ci]. Run `git pull --rebase` before your next push.
+  lockfiles:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with: { go-version: '1.22', cache: false }
+      - uses: actions/setup-node@v5
+        with: { node-version: 22 }
+      - run: go mod tidy
+        working-directory: backend
+      - run: npm install --package-lock-only
+      - name: Commit lockfiles if they changed
+        run: |
+          if [ -n "$(git status --porcelain backend/go.mod backend/go.sum package-lock.json)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add backend/go.mod backend/go.sum package-lock.json
+            git commit -m "chore: add dependency lockfiles [skip ci]"
+            git push
+          else
+            echo "Lockfiles already up to date"
+          fi
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: lockfiles
+          path: |
+            backend/go.sum
+            package-lock.json
