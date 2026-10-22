@@ -7,5 +7,5 @@ export default defineConfig({
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   server: { port: 3000, strictPort: true },
   build: { target: 'es2020', sourcemap: false },
-  test: { environment: 'node', include: ['src/**/*.test.ts'], exclude: ['src/_legacy/**'] },
+  test: { environment: 'node', include: ['src/**/*.test.ts'] },
 });

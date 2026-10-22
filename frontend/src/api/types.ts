@@ -69,3 +69,35 @@ export interface RestoreResult {
   applied: boolean; appliedAt: string; archiveSha256: string; archiveCreatedAt: string; previousData?: string; error?: string;
 }
 export interface RestoreStatus { pending: StageResult | null; last: RestoreResult | null }
+
+// ---- entities (mirrors backend/pkg/store/entities.go)
+export type AttributionStatus =
+  | 'VERIFIED' | 'PUBLICLY_REPORTED' | 'INVESTIGATOR_ATTRIBUTED' | 'SUSPECTED' | 'DISPUTED' | 'REJECTED' | 'UNKNOWN';
+export type Confidence = 'LOW' | 'MEDIUM' | 'HIGH';
+export interface AddressHistory { timestamp: string; actor: string; fromStatus: string; toStatus: string; note: string }
+export interface EntityAddress {
+  id: string; entityId: string; network: string; address: string; label: string; role: string;
+  status: AttributionStatus; confidence: Confidence; sourceType: string; sourceRef: string; basis: string; notes: string;
+  createdAt: string; updatedAt: string; history?: AddressHistory[];
+}
+export interface EntityIdentifier {
+  id: string; entityId: string; platform: string; value: string; status: string; sourceRef: string;
+  confidence: Confidence; notes: string; createdAt: string;
+}
+export interface EntityEvidence {
+  id: string; entityId: string; evidenceId: string; caseId: string; caseTitle: string; name: string;
+  sha256: string; sizeBytes: number; addressId: string; description: string; createdAt: string;
+}
+export interface Entity {
+  id: string; name: string; type: string; description: string; country: string; tags: string[];
+  status: AttributionStatus; confidence: Confidence; notes: string; createdAt: string; updatedAt: string;
+  addressCount: number; addresses?: EntityAddress[]; identifiers?: EntityIdentifier[]; evidence?: EntityEvidence[];
+}
+export interface AddressInput {
+  network: string; address: string; label?: string; role?: string; status?: string; confidence?: string;
+  sourceType?: string; sourceRef?: string; basis?: string; notes?: string;
+}
+export interface EntityInput {
+  name: string; type: string; description: string; country: string; tags: string[]; status: string; confidence: string;
+  notes: string; addresses?: AddressInput[];
+}

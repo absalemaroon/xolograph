@@ -9,7 +9,6 @@ src/
   components/   ui/ (design system) · layout/ (shell, sidebar, topbar)
   features/     overview · cases · evidence · audit · settings · planned
   hooks/ lib/ state/ styles/ types/
-  _legacy/      Gemini-era views/services (mock data) kept for Stage 3 reference; excluded from the build
 ```
 
 Dev: start the engine (`cd backend && go run ./cmd/xolographd --port 8787 --token dev --data-dir ./.data`), then

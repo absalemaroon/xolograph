@@ -10,6 +10,7 @@ import { useNav } from '@/state/navStore';
 import { ActivityTable } from './ActivityTable';
 import { AttachModal } from './AttachModal';
 import type { AttachSpec } from './AttachModal';
+import { EntityAttributions } from '../entities/EntityAttributions';
 import { LabelModal } from './LabelModal';
 import { ProvenanceList } from './Provenance';
 
@@ -56,6 +57,8 @@ export function AddressPanel({ address }: { address: string }) {
         )}
         {s.notes.map((n, i) => <p key={i} className="mt-3 text-[11px] text-fg-muted">{n}</p>)}
       </Panel>
+
+      <EntityAttributions address={s.address} />
 
       {(labels.data ?? []).length > 0 && (
         <Panel title="Analyst labels (your cases)" flush>

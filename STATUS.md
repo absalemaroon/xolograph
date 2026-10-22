@@ -9,6 +9,7 @@
 | Explorer, Graph (Sigma, expand, path, export), Entities, Reports screens | Stage 3 |
 | Tauri 2 shell: engine sidecar lifecycle, native open/save dialogs, CSP, icons, installers config | Stage 4 (written, unverified) |
 | GitHub Actions: CI (go vet/test, npm build/test, `cargo check`) and tagged desktop releases | Stage 4 |
+| Entities (v3): multi-wallet records, per-wallet attribution status + history, public identifiers, linked vault evidence; v1 labels migrated conservatively | Phase 2 (written, unverified: no Go toolchain in the authoring sandbox) |
 | Backup & restore (verified archive, staged restore, pre-restore copy, audited) | Stage 5 |
 | Signed auto-update (opt-in feature + secrets), Windows/macOS signing wiring | Stage 5 (needs your keys/certificates) |
 
@@ -33,4 +34,3 @@ npm run ui:dev     # from the repo root; http://localhost:3000
 - Graph expansion loads the most recent page of activity per node, not full history.
 - Installers are unsigned until you add signing secrets (docs/RELEASING.md). Evidence stored by earlier versions keeps absolute paths; they are re-based automatically on restore.
 - `tauri-plugin-*` / `tauri` APIs were written for Tauri 2 from documentation and not compiled here.
-- `backend/_legacy` and `frontend/src/_legacy` hold superseded Gemini-era code (mock data); excluded from builds.

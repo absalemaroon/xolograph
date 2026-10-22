@@ -200,6 +200,82 @@ var migrations = []string{
 	);
 	CREATE INDEX idx_labels_address ON entity_labels(address);
 	CREATE INDEX idx_labels_case ON entity_labels(case_id);`,
+
+	// v3: structured entities (multi-wallet, attribution status, identifiers, linked evidence).
+	// Case-scoped entity_labels stay untouched; their data is copied forward conservatively.
+	`CREATE TABLE entities (
+		id TEXT PRIMARY KEY,
+		name TEXT NOT NULL,
+		type TEXT NOT NULL DEFAULT 'OTHER' CHECK (type IN ('INDIVIDUAL','ORGANIZATION','COMPANY','EXCHANGE','PROTOCOL','DAPP','TOKEN_PROJECT','FUND','WALLET_OPERATOR','OTHER')),
+		description TEXT NOT NULL DEFAULT '',
+		country TEXT NOT NULL DEFAULT '',
+		tags TEXT NOT NULL DEFAULT '[]',
+		status TEXT NOT NULL DEFAULT 'UNKNOWN' CHECK (status IN ('VERIFIED','PUBLICLY_REPORTED','INVESTIGATOR_ATTRIBUTED','SUSPECTED','DISPUTED','REJECTED','UNKNOWN')),
+		confidence TEXT NOT NULL DEFAULT 'LOW' CHECK (confidence IN ('LOW','MEDIUM','HIGH')),
+		notes TEXT NOT NULL DEFAULT '',
+		created_at TEXT NOT NULL,
+		updated_at TEXT NOT NULL
+	);
+	CREATE INDEX idx_entities_name ON entities(name COLLATE NOCASE);
+	CREATE TABLE entity_addresses (
+		id TEXT PRIMARY KEY,
+		entity_id TEXT NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+		network TEXT NOT NULL,
+		address TEXT NOT NULL,
+		label TEXT NOT NULL DEFAULT '',
+		role TEXT NOT NULL DEFAULT '',
+		status TEXT NOT NULL DEFAULT 'UNKNOWN' CHECK (status IN ('VERIFIED','PUBLICLY_REPORTED','INVESTIGATOR_ATTRIBUTED','SUSPECTED','DISPUTED','REJECTED','UNKNOWN')),
+		confidence TEXT NOT NULL DEFAULT 'LOW' CHECK (confidence IN ('LOW','MEDIUM','HIGH')),
+		source_type TEXT NOT NULL DEFAULT '',
+		source_ref TEXT NOT NULL DEFAULT '',
+		basis TEXT NOT NULL DEFAULT '',
+		notes TEXT NOT NULL DEFAULT '',
+		created_at TEXT NOT NULL,
+		updated_at TEXT NOT NULL,
+		UNIQUE(entity_id, network, address)
+	);
+	CREATE INDEX idx_entity_addresses_lookup ON entity_addresses(network, address);
+	CREATE TABLE entity_address_history (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		entity_address_id TEXT NOT NULL REFERENCES entity_addresses(id) ON DELETE CASCADE,
+		ts TEXT NOT NULL,
+		actor TEXT NOT NULL,
+		from_status TEXT NOT NULL,
+		to_status TEXT NOT NULL,
+		note TEXT NOT NULL DEFAULT ''
+	);
+	CREATE INDEX idx_entity_addr_hist ON entity_address_history(entity_address_id, id);
+	CREATE TABLE entity_identifiers (
+		id TEXT PRIMARY KEY,
+		entity_id TEXT NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+		platform TEXT NOT NULL CHECK (platform IN ('WEBSITE','X','TELEGRAM','DISCORD','FACEBOOK','LINKEDIN','GITHUB','EMAIL','OTHER')),
+		value TEXT NOT NULL,
+		status TEXT NOT NULL DEFAULT 'UNVERIFIED' CHECK (status IN ('UNVERIFIED','PUBLICLY_LISTED','VERIFIED','DISPUTED')),
+		source_ref TEXT NOT NULL DEFAULT '',
+		confidence TEXT NOT NULL DEFAULT 'LOW' CHECK (confidence IN ('LOW','MEDIUM','HIGH')),
+		notes TEXT NOT NULL DEFAULT '',
+		created_at TEXT NOT NULL,
+		UNIQUE(entity_id, platform, value)
+	);
+	CREATE TABLE entity_evidence (
+		id TEXT PRIMARY KEY,
+		entity_id TEXT NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+		evidence_id TEXT NOT NULL REFERENCES evidence(id) ON DELETE RESTRICT,
+		address_id TEXT NOT NULL DEFAULT '',
+		description TEXT NOT NULL DEFAULT '',
+		created_at TEXT NOT NULL,
+		UNIQUE(entity_id, evidence_id)
+	);
+	INSERT INTO entities(id,name,type,status,confidence,notes,created_at,updated_at)
+		SELECT 'ent_'||lower(hex(randomblob(12))), MIN(name), 'OTHER', 'UNKNOWN', 'LOW',
+			'Migrated from v1 case labels (grouped by identical name). Review before relying on it.', MIN(created_at), MIN(created_at)
+		FROM entity_labels GROUP BY lower(name);
+	INSERT INTO entity_addresses(id,entity_id,network,address,status,confidence,source_type,source_ref,basis,created_at,updated_at)
+		SELECT 'ea_'||lower(hex(randomblob(12))), e.id, l.network, l.address,
+			CASE l.source WHEN 'ANALYST_ASSERTION' THEN 'INVESTIGATOR_ATTRIBUTED' ELSE 'PUBLICLY_REPORTED' END,
+			l.confidence, l.source, 'migrated from case label '||l.id, l.basis, l.created_at, l.created_at
+		FROM entity_labels l JOIN entities e ON lower(e.name)=lower(l.name)
+		GROUP BY e.id, l.network, l.address;`,
 }
 
 func (s *Store) migrate(ctx context.Context) error {

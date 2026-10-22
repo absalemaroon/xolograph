@@ -2,7 +2,7 @@ import { useSettings } from '@/state/settingsStore';
 import { request } from './client';
 import type {
   ActivityPage, AddressSummary, AuditEntry, Case, CaseStatus, ChainResult, ChainTx, CustodyEvent,
-  BackupResult, Evidence, Finding, Label, Note, ReportBundle, RestoreStatus, StageResult,
+  AddressInput, BackupResult, Entity, EntityInput, Evidence, Finding, Label, Note, ReportBundle, RestoreStatus, StageResult,
 } from './types';
 
 const actor = (): string | undefined => useSettings.getState().analyst.trim() || undefined;
@@ -51,6 +51,25 @@ export const api = {
     },
     add: (caseId: string, l: { address: string; name: string; category: string; source: string; confidence: string; basis: string }) =>
       request<Label>('POST', `/api/cases/${enc(caseId)}/labels`, { ...l, actor: actor() }),
+  },
+  entities: {
+    list: (q = '') => request<Entity[]>('GET', `/api/entities?q=${enc(q)}`),
+    forAddress: (address: string, network = 'ethereum-mainnet') =>
+      request<Entity[]>('GET', `/api/entities?address=${enc(address)}&network=${enc(network)}`),
+    get: (id: string) => request<Entity>('GET', `/api/entities/${enc(id)}`),
+    create: (e: EntityInput) => request<Entity>('POST', '/api/entities', { ...e, actor: actor() }),
+    update: (id: string, e: EntityInput) => request<Entity>('PATCH', `/api/entities/${enc(id)}`, { ...e, actor: actor() }),
+    remove: (id: string) => request<null>('DELETE', `/api/entities/${enc(id)}`, { actor: actor() }),
+    addAddress: (id: string, a: AddressInput) => request<Entity>('POST', `/api/entities/${enc(id)}/addresses`, { ...a, actor: actor() }),
+    updateAddress: (addrId: string, a: Omit<AddressInput, 'network' | 'address'> & { changeNote?: string }) =>
+      request<Entity>('PATCH', `/api/entity-addresses/${enc(addrId)}`, { ...a, actor: actor() }),
+    removeAddress: (addrId: string) => request<Entity>('DELETE', `/api/entity-addresses/${enc(addrId)}`, { actor: actor() }),
+    addIdentifier: (id: string, i: { platform: string; value: string; status: string; sourceRef: string; confidence: string; notes: string }) =>
+      request<Entity>('POST', `/api/entities/${enc(id)}/identifiers`, { ...i, actor: actor() }),
+    removeIdentifier: (identId: string) => request<Entity>('DELETE', `/api/entity-identifiers/${enc(identId)}`, { actor: actor() }),
+    linkEvidence: (id: string, evidenceId: string, addressId: string, description: string) =>
+      request<Entity>('POST', `/api/entities/${enc(id)}/evidence`, { evidenceId, addressId, description, actor: actor() }),
+    unlinkEvidence: (linkId: string) => request<Entity>('DELETE', `/api/entity-evidence/${enc(linkId)}`, { actor: actor() }),
   },
   reports: {
     export: (caseId: string) => request<ReportBundle>('POST', `/api/cases/${enc(caseId)}/report`, { actor: actor() }),
