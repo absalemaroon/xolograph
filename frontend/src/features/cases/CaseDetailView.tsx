@@ -8,9 +8,10 @@ import { formatUTC } from '@/lib/format';
 import { useNav } from '@/state/navStore';
 import { EvidenceTab } from './EvidenceTab';
 import { FindingsTab } from './FindingsTab';
+import { BoardTab } from '../board/BoardTab';
 import { NotesTab } from './NotesTab';
 
-type Tab = 'evidence' | 'notes' | 'findings';
+type Tab = 'evidence' | 'notes' | 'findings' | 'board';
 
 export function CaseDetailView({ caseId }: { caseId: string }) {
   const { closeCase } = useNav();
@@ -31,6 +32,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
     { id: 'evidence', label: 'Evidence', count: data.evidenceCount },
     { id: 'notes', label: 'Notes' },
     { id: 'findings', label: 'Findings', count: data.findingCount },
+    { id: 'board', label: 'Board' },
   ];
 
   return (
@@ -71,6 +73,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
       {tab === 'evidence' && <EvidenceTab caseId={caseId} onChanged={reload} />}
       {tab === 'notes' && <NotesTab caseId={caseId} onChanged={reload} />}
       {tab === 'findings' && <FindingsTab caseId={caseId} onChanged={reload} />}
+      {tab === 'board' && <BoardTab caseId={caseId} onChanged={reload} />}
     </>
   );
 }

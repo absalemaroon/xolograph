@@ -2,7 +2,7 @@ import { useSettings } from '@/state/settingsStore';
 import { request } from './client';
 import type {
   ActivityPage, AddressSummary, AuditEntry, Case, CaseStatus, ChainResult, ChainTx, CustodyEvent,
-  AddressAttribution, AddressInput, BackupResult, Entity, EntityInput, Evidence, Finding, GraphSnapshot, GraphSnapshotSummary, Label, Note, ReportBundle, RestoreStatus, StageResult,
+  AddressAttribution, AddressInput, BackupResult, Board, BoardClaim, Entity, EntityInput, Evidence, Finding, GraphSnapshot, GraphSnapshotSummary, Label, Note, ReportBundle, RestoreStatus, StageResult,
 } from './types';
 
 const actor = (): string | undefined => useSettings.getState().analyst.trim() || undefined;
@@ -51,6 +51,23 @@ export const api = {
     },
     add: (caseId: string, l: { address: string; name: string; category: string; source: string; confidence: string; basis: string }) =>
       request<Label>('POST', `/api/cases/${enc(caseId)}/labels`, { ...l, actor: actor() }),
+  },
+  board: {
+    get: (caseId: string) => request<Board>('GET', `/api/cases/${enc(caseId)}/board`),
+    addNode: (caseId: string, n: { kind: string; refId?: string; network?: string; title?: string; body?: string; x: number; y: number }) =>
+      request<Board>('POST', `/api/cases/${enc(caseId)}/board/nodes`, { ...n, actor: actor() }),
+    move: (caseId: string, positions: { id: string; x: number; y: number }[]) =>
+      request<null>('POST', `/api/cases/${enc(caseId)}/board/positions`, { positions }),
+    updateNode: (id: string, title: string, body: string) => request<Board>('PATCH', `/api/board-nodes/${enc(id)}`, { title, body, actor: actor() }),
+    removeNode: (id: string) => request<Board>('DELETE', `/api/board-nodes/${enc(id)}`, { actor: actor() }),
+    addLink: (caseId: string, l: { sourceId: string; targetId: string; relation: string; claim: BoardClaim; confidence: string; sourceRef: string; note: string; evidenceIds: string[] }) =>
+      request<Board>('POST', `/api/cases/${enc(caseId)}/board/links`, { ...l, actor: actor() }),
+    updateLink: (id: string, l: { relation: string; claim: BoardClaim; confidence: string; sourceRef: string; note: string }) =>
+      request<Board>('PATCH', `/api/board-links/${enc(id)}`, { ...l, actor: actor() }),
+    removeLink: (id: string) => request<Board>('DELETE', `/api/board-links/${enc(id)}`, { actor: actor() }),
+    addLinkEvidence: (linkId: string, evidenceId: string, description: string) =>
+      request<Board>('POST', `/api/board-links/${enc(linkId)}/evidence`, { evidenceId, description, actor: actor() }),
+    removeLinkEvidence: (id: string) => request<Board>('DELETE', `/api/board-link-evidence/${enc(id)}`, { actor: actor() }),
   },
   graphs: {
     list: () => request<GraphSnapshotSummary[]>('GET', '/api/graph-snapshots'),

@@ -164,19 +164,19 @@ func TestV1LabelsMigrateConservatively(t *testing.T) {
 	if _, err := s.AddLabel(ctx, Label{CaseID: c.ID, Address: addrB, Name: "exchange x", Source: "ANALYST_ASSERTION", Confidence: "LOW", Basis: "seen in flow"}, ""); err != nil {
 		t.Fatal(err)
 	}
-	for _, q := range []string{`DELETE FROM entity_evidence`, `DELETE FROM entity_identifiers`, `DELETE FROM entity_address_history`,
-		`DELETE FROM entity_addresses`, `DELETE FROM entities`, `DELETE FROM schema_migrations WHERE version=3`} {
-		if _, err := s.DB.ExecContext(ctx, q); err != nil {
-			t.Fatal(err)
-		}
-	}
-	for _, tbl := range []string{"entity_evidence", "entity_identifiers", "entity_address_history", "entity_addresses", "entities"} {
+	// Roll the schema back to v2 (labels only) so migration v3 runs over real v1-style label data.
+	// Every table created by v3 or later must be dropped here, children first, and their versions forgotten;
+	// otherwise migrate() sees a newer version and has nothing to do.
+	for _, tbl := range []string{"board_link_evidence", "board_links", "board_nodes", "graph_snapshots", "entity_evidence", "entity_identifiers", "entity_address_history", "entity_addresses", "entities"} {
 		if _, err := s.DB.ExecContext(ctx, `DROP TABLE `+tbl); err != nil {
 			t.Fatal(err)
 		}
 	}
+	if _, err := s.DB.ExecContext(ctx, `DELETE FROM schema_migrations WHERE version > 2`); err != nil {
+		t.Fatal(err)
+	}
 	if err := s.migrate(ctx); err != nil {
-		t.Fatalf("v3 over existing labels: %v", err)
+		t.Fatalf("re-running migrations v3+ over existing labels: %v", err)
 	}
 	list, err := s.ListEntities(ctx, "")
 	if err != nil || len(list) != 1 || list[0].AddressCount != 2 || list[0].Status != "UNKNOWN" {

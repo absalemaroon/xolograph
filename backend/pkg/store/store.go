@@ -287,6 +287,47 @@ var migrations = []string{
 		data TEXT NOT NULL,
 		created_at TEXT NOT NULL
 	);`,
+
+	// v5: case relationship board. Facts need support (evidence or a stated source); hypotheses are labelled as such.
+	`CREATE TABLE board_nodes (
+		id TEXT PRIMARY KEY,
+		case_id TEXT NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
+		kind TEXT NOT NULL CHECK (kind IN ('ENTITY','WALLET','EVIDENCE','NOTE','EVENT')),
+		ref_id TEXT NOT NULL DEFAULT '',
+		network TEXT NOT NULL DEFAULT '',
+		title TEXT NOT NULL,
+		body TEXT NOT NULL DEFAULT '',
+		x REAL NOT NULL DEFAULT 0,
+		y REAL NOT NULL DEFAULT 0,
+		created_at TEXT NOT NULL,
+		updated_at TEXT NOT NULL
+	);
+	CREATE INDEX idx_board_nodes_case ON board_nodes(case_id);
+	CREATE UNIQUE INDEX idx_board_node_ref ON board_nodes(case_id, kind, ref_id, network) WHERE ref_id <> '';
+	CREATE TABLE board_links (
+		id TEXT PRIMARY KEY,
+		case_id TEXT NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
+		source_id TEXT NOT NULL REFERENCES board_nodes(id) ON DELETE CASCADE,
+		target_id TEXT NOT NULL REFERENCES board_nodes(id) ON DELETE CASCADE,
+		relation TEXT NOT NULL,
+		claim TEXT NOT NULL CHECK (claim IN ('FACT','HYPOTHESIS')),
+		confidence TEXT NOT NULL DEFAULT 'LOW' CHECK (confidence IN ('LOW','MEDIUM','HIGH')),
+		source_ref TEXT NOT NULL DEFAULT '',
+		note TEXT NOT NULL DEFAULT '',
+		created_at TEXT NOT NULL,
+		updated_at TEXT NOT NULL,
+		CHECK (source_id <> target_id),
+		UNIQUE(source_id, target_id, relation)
+	);
+	CREATE INDEX idx_board_links_case ON board_links(case_id);
+	CREATE TABLE board_link_evidence (
+		id TEXT PRIMARY KEY,
+		link_id TEXT NOT NULL REFERENCES board_links(id) ON DELETE CASCADE,
+		evidence_id TEXT NOT NULL REFERENCES evidence(id) ON DELETE RESTRICT,
+		description TEXT NOT NULL DEFAULT '',
+		created_at TEXT NOT NULL,
+		UNIQUE(link_id, evidence_id)
+	);`,
 }
 
 func (s *Store) migrate(ctx context.Context) error {

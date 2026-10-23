@@ -5,7 +5,7 @@
 | 1 | Audit, remove dead `_legacy` code, document direction | Done (audit in chat; legacy removed) |
 | 2 | Entity foundation: multi-wallet, attribution status/history, identifiers, linked evidence, profile UI, explorer attributions | Written; run CI to verify |
 | 3 | Entity wallet graph: multi-seed, entity labels on nodes, filters, inspector, saved views | Written; run CI to verify |
-| 4 | Case relationship board (facts vs hypotheses, evidence-backed edges) | Planned |
+| 4 | Case relationship board (facts vs hypotheses, evidence-backed links) | Written; run CI to verify |
 | 5 | Multi-chain explorer, universal search, provider adapters | Planned |
 | 6 | Portfolio and qualified P&L | Planned |
 | 7 | Tools: file and metadata inspector | Planned |
@@ -25,3 +25,10 @@
 - Entity names are looked up live from local records (`POST /api/entities/lookup`). They are never derived from chain data. The strongest non-rejected claim labels a node; rejected claims never do.
 - Filters (minimum transfers, ETH/token) hide data on screen only.
 - Saved views (`graph_snapshots`): positions plus the aggregates loaded at save time. Restoring does not re-query the chain and is read-only (expanding would double-count transfers); entity names are refreshed.
+
+## Case board (v5 migration, Phase 4)
+- Per-case canvas under the case's **Board** tab. Items: entity, wallet, evidence item, note, event. Referenced records are shown live and never copied.
+- Links are drawn only by a person. Chain activity never creates a link.
+- Every link is a **FACT** (solid line) or a **HYPOTHESIS** (dashed, marked "(?)"). A fact needs at least one linked evidence item from the same case or a stated source; the last support cannot be removed from a fact, and a link cannot be promoted without support.
+- Layout (positions) is saved per item and is not audited; adding, editing and removing items, links and evidence links are audited.
+- Evidence whose integrity check failed is flagged on the board.

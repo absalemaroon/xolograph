@@ -105,3 +105,17 @@ export interface EntityInput {
 export interface AddressAttribution { entityId: string; name: string; type: string; status: AttributionStatus; confidence: Confidence }
 export interface GraphSnapshotSummary { id: string; name: string; seeds: string[]; nodeCount: number; edgeCount: number; createdAt: string }
 export interface GraphSnapshot extends GraphSnapshotSummary { data: unknown }
+
+// ---- case relationship board (mirrors backend/pkg/store/board.go)
+export type BoardKind = 'ENTITY' | 'WALLET' | 'EVIDENCE' | 'NOTE' | 'EVENT';
+export type BoardClaim = 'FACT' | 'HYPOTHESIS';
+export interface BoardNode {
+  id: string; caseId: string; kind: BoardKind; refId: string; network: string; title: string; body: string; x: number; y: number;
+  createdAt: string; updatedAt: string; liveName?: string; entityStatus?: string; evidenceHash?: string; evidenceState?: string;
+}
+export interface BoardLinkEvidence { id: string; linkId: string; evidenceId: string; name: string; sha256: string; status: string; description: string; createdAt: string }
+export interface BoardLink {
+  id: string; caseId: string; sourceId: string; targetId: string; relation: string; claim: BoardClaim; confidence: Confidence;
+  sourceRef: string; note: string; evidence: BoardLinkEvidence[]; createdAt: string; updatedAt: string;
+}
+export interface Board { nodes: BoardNode[]; links: BoardLink[] }
