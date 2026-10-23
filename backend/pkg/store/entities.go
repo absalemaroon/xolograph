@@ -720,3 +720,55 @@ func (s *Store) UnlinkEntityEvidence(ctx context.Context, linkID, actor string) 
 	}
 	return s.GetEntity(ctx, entityID)
 }
+
+// AddressAttribution is one entity's claim on one address, as shown on graph nodes.
+type AddressAttribution struct {
+	EntityID   string `json:"entityId"`
+	Name       string `json:"name"`
+	Type       string `json:"type"`
+	Status     string `json:"status"`
+	Confidence string `json:"confidence"`
+}
+
+// LookupAddresses returns, for each requested address on a network, every entity claim on it (rejected claims
+// included, so the caller can show that a claim was ruled out). Addresses with no claims are absent from the map.
+func (s *Store) LookupAddresses(ctx context.Context, network string, addrs []string) (map[string][]AddressAttribution, error) {
+	if network == "" {
+		network = "ethereum-mainnet"
+	}
+	if len(addrs) > 1000 {
+		return nil, fmt.Errorf("%w: at most 1000 addresses per lookup", ErrInvalid)
+	}
+	out := map[string][]AddressAttribution{}
+	if len(addrs) == 0 {
+		return out, nil
+	}
+	args := []any{network}
+	ph := make([]string, 0, len(addrs))
+	for _, a := range addrs {
+		norm, err := NormalizeAddress(network, a)
+		if err != nil {
+			continue // unparseable addresses simply have no claims
+		}
+		ph = append(ph, "?")
+		args = append(args, norm)
+	}
+	if len(ph) == 0 {
+		return out, nil
+	}
+	rows, err := s.DB.QueryContext(ctx, `SELECT a.address,e.id,e.name,e.type,a.status,a.confidence FROM entity_addresses a JOIN entities e ON e.id=a.entity_id
+		WHERE a.network=? AND a.address IN (`+strings.Join(ph, ",")+`) ORDER BY e.name`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var addr string
+		var x AddressAttribution
+		if err := rows.Scan(&addr, &x.EntityID, &x.Name, &x.Type, &x.Status, &x.Confidence); err != nil {
+			return nil, err
+		}
+		out[addr] = append(out[addr], x)
+	}
+	return out, rows.Err()
+}

@@ -2,7 +2,7 @@ import { useSettings } from '@/state/settingsStore';
 import { request } from './client';
 import type {
   ActivityPage, AddressSummary, AuditEntry, Case, CaseStatus, ChainResult, ChainTx, CustodyEvent,
-  AddressInput, BackupResult, Entity, EntityInput, Evidence, Finding, Label, Note, ReportBundle, RestoreStatus, StageResult,
+  AddressAttribution, AddressInput, BackupResult, Entity, EntityInput, Evidence, Finding, GraphSnapshot, GraphSnapshotSummary, Label, Note, ReportBundle, RestoreStatus, StageResult,
 } from './types';
 
 const actor = (): string | undefined => useSettings.getState().analyst.trim() || undefined;
@@ -52,7 +52,16 @@ export const api = {
     add: (caseId: string, l: { address: string; name: string; category: string; source: string; confidence: string; basis: string }) =>
       request<Label>('POST', `/api/cases/${enc(caseId)}/labels`, { ...l, actor: actor() }),
   },
+  graphs: {
+    list: () => request<GraphSnapshotSummary[]>('GET', '/api/graph-snapshots'),
+    get: (id: string) => request<GraphSnapshot>('GET', `/api/graph-snapshots/${enc(id)}`),
+    save: (b: { name: string; seeds: string[]; nodeCount: number; edgeCount: number; data: unknown }) =>
+      request<GraphSnapshotSummary>('POST', '/api/graph-snapshots', { ...b, actor: actor() }),
+    remove: (id: string) => request<null>('DELETE', `/api/graph-snapshots/${enc(id)}`, { actor: actor() }),
+  },
   entities: {
+    lookup: (addresses: string[], network = 'ethereum-mainnet') =>
+      request<Record<string, AddressAttribution[]>>('POST', '/api/entities/lookup', { network, addresses }),
     list: (q = '') => request<Entity[]>('GET', `/api/entities?q=${enc(q)}`),
     forAddress: (address: string, network = 'ethereum-mainnet') =>
       request<Entity[]>('GET', `/api/entities?address=${enc(address)}&network=${enc(network)}`),

@@ -106,14 +106,18 @@ function Overview({ e }: { e: Entity }) {
 }
 
 function Wallets({ e, onChange }: { e: Entity; onChange: () => void }) {
-  const { openExplorer, openGraph } = useNav();
+  const { openExplorer, openGraph, openGraphMulti } = useNav();
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<EntityAddress | null>(null);
   const [removing, setRemoving] = useState<EntityAddress | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const addrs = e.addresses ?? [];
+  const graphable = [...new Set(addrs.filter((a) => explorerSupported(a.network) && a.status !== 'REJECTED').map((a) => a.address))].slice(0, 10);
   return (
-    <Panel title="Associated wallets" flush actions={<Button size="sm" variant="primary" icon={<Plus size={12} />} onClick={() => setAdding(true)}>Add wallet</Button>}>
+    <Panel title="Associated wallets" flush actions={<div className="flex gap-2">
+      {graphable.length > 0 && <Button size="sm" icon={<Network size={12} />} onClick={() => openGraphMulti(graphable)}>Graph wallets ({graphable.length})</Button>}
+      <Button size="sm" variant="primary" icon={<Plus size={12} />} onClick={() => setAdding(true)}>Add wallet</Button>
+    </div>}>
       {addrs.length === 0 ? <div className="p-4"><EmptyState title="No wallets" hint="Add a wallet only with a stated basis. Transfers between wallets do not prove common ownership." /></div> : (
         <div className="overflow-x-auto">
           <table className="x-table">

@@ -10,6 +10,7 @@
 | Tauri 2 shell: engine sidecar lifecycle, native open/save dialogs, CSP, icons, installers config | Stage 4 (written, unverified) |
 | GitHub Actions: CI (go vet/test, npm build/test, `cargo check`) and tagged desktop releases | Stage 4 |
 | Entities (v3): multi-wallet records, per-wallet attribution status + history, public identifiers, linked vault evidence; v1 labels migrated conservatively | Phase 2 (written, unverified: no Go toolchain in the authoring sandbox) |
+| Graph (v4): multi-seed, entity labels, filters, saved views | Phase 3 (written, unverified) |
 | Backup & restore (verified archive, staged restore, pre-restore copy, audited) | Stage 5 |
 | Signed auto-update (opt-in feature + secrets), Windows/macOS signing wiring | Stage 5 (needs your keys/certificates) |
 

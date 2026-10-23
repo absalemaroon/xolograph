@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"strings"
@@ -192,5 +193,46 @@ func TestV1LabelsMigrateConservatively(t *testing.T) {
 	}
 	if labels, _ := s.ListLabels(ctx, "", ""); len(labels) != 2 {
 		t.Fatal("original labels must be preserved")
+	}
+}
+
+func TestLookupAddressesAndGraphSnapshots(t *testing.T) {
+	ctx, s := context.Background(), newStore(t)
+	e, _ := s.CreateEntity(ctx, EntityInput{Name: "Mixer-ish", Addresses: []AddressInput{
+		{Address: addrA, Status: "SUSPECTED"},
+		{Address: addrB, Status: "REJECTED", Basis: "ruled out"},
+	}}, "")
+	got, err := s.LookupAddresses(ctx, "", []string{"0x" + strings.ToUpper(addrA[2:]), addrB, "0xnotanaddress", "0x3333333333333333333333333333333333333333"})
+	if err != nil || len(got) != 2 || got[addrA][0].EntityID != e.ID || got[addrB][0].Status != "REJECTED" {
+		t.Fatalf("lookup: %+v %v", got, err)
+	}
+
+	data := json.RawMessage(`{"nodes":[{"id":"a","x":1,"y":2}],"edges":[]}`)
+	if _, err := s.SaveGraphSnapshot(ctx, " ", []string{addrA}, 1, 0, data, ""); !errors.Is(err, ErrInvalid) {
+		t.Fatal("blank name accepted")
+	}
+	if _, err := s.SaveGraphSnapshot(ctx, "x", nil, 1, 0, data, ""); !errors.Is(err, ErrInvalid) {
+		t.Fatal("no seeds accepted")
+	}
+	if _, err := s.SaveGraphSnapshot(ctx, "x", []string{addrA}, 1, 0, json.RawMessage(`{bad`), ""); !errors.Is(err, ErrInvalid) {
+		t.Fatal("invalid JSON accepted")
+	}
+	g, err := s.SaveGraphSnapshot(ctx, "First look", []string{addrA, addrB}, 1, 0, data, "alice")
+	if err != nil {
+		t.Fatal(err)
+	}
+	list, err := s.ListGraphSnapshots(ctx)
+	if err != nil || len(list) != 1 || list[0].Data != nil || len(list[0].Seeds) != 2 {
+		t.Fatalf("list: %+v %v", list, err)
+	}
+	full, err := s.GetGraphSnapshot(ctx, g.ID)
+	if err != nil || string(full.Data) != string(data) {
+		t.Fatalf("get: %+v %v", full, err)
+	}
+	if err := s.DeleteGraphSnapshot(ctx, g.ID, ""); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.GetGraphSnapshot(ctx, g.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatal("snapshot still present")
 	}
 }

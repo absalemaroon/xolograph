@@ -101,3 +101,7 @@ export interface EntityInput {
   name: string; type: string; description: string; country: string; tags: string[]; status: string; confidence: string;
   notes: string; addresses?: AddressInput[];
 }
+
+export interface AddressAttribution { entityId: string; name: string; type: string; status: AttributionStatus; confidence: Confidence }
+export interface GraphSnapshotSummary { id: string; name: string; seeds: string[]; nodeCount: number; edgeCount: number; createdAt: string }
+export interface GraphSnapshot extends GraphSnapshotSummary { data: unknown }

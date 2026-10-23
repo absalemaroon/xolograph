@@ -276,6 +276,17 @@ var migrations = []string{
 			l.confidence, l.source, 'migrated from case label '||l.id, l.basis, l.created_at, l.created_at
 		FROM entity_labels l JOIN entities e ON lower(e.name)=lower(l.name)
 		GROUP BY e.id, l.network, l.address;`,
+
+	// v4: saved graph snapshots (positions and loaded aggregates; a point-in-time record, not live data).
+	`CREATE TABLE graph_snapshots (
+		id TEXT PRIMARY KEY,
+		name TEXT NOT NULL,
+		seeds TEXT NOT NULL,
+		node_count INTEGER NOT NULL,
+		edge_count INTEGER NOT NULL,
+		data TEXT NOT NULL,
+		created_at TEXT NOT NULL
+	);`,
 }
 
 func (s *Store) migrate(ctx context.Context) error {

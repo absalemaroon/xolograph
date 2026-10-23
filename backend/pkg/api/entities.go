@@ -223,3 +223,19 @@ func (s *Server) unlinkEntityEvidence(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, 200, v)
 }
+
+func (s *Server) lookupEntities(w http.ResponseWriter, r *http.Request) {
+	var b struct {
+		Network   string   `json:"network"`
+		Addresses []string `json:"addresses"`
+	}
+	if !decode(w, r, &b) {
+		return
+	}
+	v, err := s.st.LookupAddresses(r.Context(), b.Network, b.Addresses)
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, 200, v)
+}
