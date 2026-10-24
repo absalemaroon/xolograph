@@ -1,11 +1,11 @@
-// Package chain retrieves and normalises real blockchain data (Ethereum mainnet).
+// Package chain retrieves and normalises real blockchain data (EVM networks, Solana, Bitcoin).
 // Every record carries provenance: source, retrieval time and a SHA-256 of the raw response.
 package chain
 
 import "time"
 
 type Provenance struct {
-	Source        string    `json:"source"` // ETHEREUM_JSON_RPC | BLOCKSCOUT_V2
+	Source        string    `json:"source"` // ETHEREUM_JSON_RPC | BLOCKSCOUT_V2 | SOLANA_JSON_RPC | ESPLORA_REST
 	Endpoint      string    `json:"endpoint"`
 	Query         string    `json:"query"`
 	RetrievedAt   time.Time `json:"retrievedAt"`
@@ -22,7 +22,9 @@ type ThirdPartyLabel struct {
 type AddressSummary struct {
 	Address          string            `json:"address"`
 	Network          string            `json:"network"`
-	BalanceWei       string            `json:"balanceWei"`
+	NativeSymbol     string            `json:"nativeSymbol"`
+	NativeDecimals   int               `json:"nativeDecimals"`
+	BalanceWei       string            `json:"balanceWei"` // smallest native unit (wei, lamports, satoshi)
 	Nonce            uint64            `json:"nonce"`
 	IsContract       bool              `json:"isContract"`
 	ThirdPartyLabels []ThirdPartyLabel `json:"thirdPartyLabels"`
@@ -70,6 +72,8 @@ type TokenTransfer struct {
 type Transaction struct {
 	Hash            string          `json:"hash"`
 	Network         string          `json:"network"`
+	NativeSymbol    string          `json:"nativeSymbol"`
+	NativeDecimals  int             `json:"nativeDecimals"`
 	Status          string          `json:"status"` // SUCCESS | FAILED | PENDING | UNKNOWN
 	BlockNumber     uint64          `json:"blockNumber"`
 	BlockHash       string          `json:"blockHash,omitempty"`
@@ -82,6 +86,27 @@ type Transaction struct {
 	GasPriceWei     string          `json:"gasPriceWei"`
 	FeeWei          string          `json:"feeWei"`
 	TokenTransfers  []TokenTransfer `json:"tokenTransfers"`
+	Inputs          []TxIO          `json:"inputs,omitempty"`  // UTXO chains
+	Outputs         []TxIO          `json:"outputs,omitempty"` // UTXO chains
 	Notes           []string        `json:"notes"`
 	Provenance      []Provenance    `json:"provenance"`
+}
+
+// TxIO is one input or output of a UTXO transaction.
+type TxIO struct {
+	Address string `json:"address"` // empty for non-standard scripts (e.g. OP_RETURN)
+	Value   string `json:"value"`   // satoshi
+	Type    string `json:"type,omitempty"`
+}
+
+// NetworkInfo describes one supported network and what its adapter can do.
+type NetworkInfo struct {
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	Family         string `json:"family"` // EVM | SOLANA | BITCOIN
+	NativeSymbol   string `json:"nativeSymbol"`
+	NativeDecimals int    `json:"nativeDecimals"`
+	HasHistory     bool   `json:"hasHistory"` // address activity available
+	HasLabels      bool   `json:"hasLabels"`  // third-party labels available
+	Endpoint       string `json:"endpoint"`   // scheme://host only
 }

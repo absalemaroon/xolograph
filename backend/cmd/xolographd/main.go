@@ -13,9 +13,11 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/xolograph/backend/pkg/api"
@@ -57,7 +59,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("listen: %v", err)
 	}
-	srv := &http.Server{Handler: api.New(st, *token, newChain(*rpcURL, *historyURL)).Handler(), ReadHeaderTimeout: 10 * time.Second}
+	srv := &http.Server{Handler: api.NewMulti(st, *token, buildRegistry(*rpcURL, *historyURL)).Handler(), ReadHeaderTimeout: 10 * time.Second}
 
 	_ = json.NewEncoder(os.Stdout).Encode(map[string]string{"addr": ln.Addr().String(), "token": *token})
 
@@ -92,10 +94,72 @@ func envOr(k, def string) string {
 	return def
 }
 
-func newChain(rpcURL, historyURL string) *chain.Ethereum {
-	var bs *chain.Blockscout
-	if historyURL != "" {
-		bs = chain.NewBlockscout(historyURL)
+type evmNet struct{ id, name, symbol, rpc, history string }
+
+// Default public endpoints. They are conveniences, not guarantees: override any of them with
+// XOLOGRAPH_RPC_<ID> / XOLOGRAPH_HISTORY_<ID> (ID upper-cased, "-" as "_"), or set XOLOGRAPH_RPC_<ID>=off to disable a network.
+var evmNets = []evmNet{
+	{"base", "Base", "ETH", "https://base-rpc.publicnode.com", "https://base.blockscout.com"},
+	{"optimism", "Optimism", "ETH", "https://optimism-rpc.publicnode.com", "https://optimism.blockscout.com"},
+	{"arbitrum", "Arbitrum One", "ETH", "https://arbitrum-one-rpc.publicnode.com", "https://arbitrum.blockscout.com"},
+	{"polygon", "Polygon", "POL", "https://polygon-bor-rpc.publicnode.com", "https://polygon.blockscout.com"},
+	{"bsc", "BNB Smart Chain", "BNB", "https://bsc-rpc.publicnode.com", ""},
+	{"gnosis", "Gnosis", "xDAI", "https://gnosis-rpc.publicnode.com", "https://gnosis.blockscout.com"},
+	{"avalanche", "Avalanche C-Chain", "AVAX", "https://avalanche-c-chain-rpc.publicnode.com", ""},
+	{"scroll", "Scroll", "ETH", "https://scroll-rpc.publicnode.com", "https://scroll.blockscout.com"},
+	{"celo", "Celo", "CELO", "https://forno.celo.org", "https://celo.blockscout.com"},
+}
+
+func envID(id string) string { return strings.ToUpper(strings.ReplaceAll(id, "-", "_")) }
+
+// netEnv returns the endpoint for a network, honouring XOLOGRAPH_<kind>_<ID>. ok is false when the network is switched off.
+func netEnv(kind, id, def string) (string, bool) {
+	v := os.Getenv("XOLOGRAPH_" + kind + "_" + envID(id))
+	switch strings.ToLower(v) {
+	case "":
+		return def, def != ""
+	case "off", "none", "disabled":
+		return "", false
 	}
-	return chain.NewEthereum(chain.NewRPC(rpcURL), bs)
+	return v, true
+}
+
+func hostOf(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" {
+		return ""
+	}
+	return u.Scheme + "://" + u.Host
+}
+
+func buildRegistry(ethRPC, ethHistory string) *chain.Registry {
+	reg := chain.NewRegistry()
+	var bs *chain.Blockscout
+	if ethHistory != "" {
+		bs = chain.NewBlockscout(ethHistory)
+	}
+	reg.Add(chain.NetworkInfo{ID: "ethereum-mainnet", Name: "Ethereum", Family: "EVM", NativeSymbol: "ETH", NativeDecimals: 18,
+		HasHistory: bs != nil, HasLabels: bs != nil, Endpoint: hostOf(ethRPC)}, chain.NewEthereum(chain.NewRPC(ethRPC), bs))
+
+	for _, n := range evmNets {
+		rpc, ok := netEnv("RPC", n.id, n.rpc)
+		if !ok {
+			continue
+		}
+		var b *chain.Blockscout
+		if h, hok := netEnv("HISTORY", n.id, n.history); hok {
+			b = chain.NewBlockscout(h)
+		}
+		reg.Add(chain.NetworkInfo{ID: n.id, Name: n.name, Family: "EVM", NativeSymbol: n.symbol, NativeDecimals: 18,
+			HasHistory: b != nil, HasLabels: b != nil, Endpoint: hostOf(rpc)}, chain.NewEVM(n.id, n.symbol, chain.NewRPC(rpc), b))
+	}
+	if rpc, ok := netEnv("RPC", "solana", "https://api.mainnet-beta.solana.com"); ok {
+		reg.Add(chain.NetworkInfo{ID: "solana", Name: "Solana", Family: "SOLANA", NativeSymbol: "SOL", NativeDecimals: 9,
+			HasHistory: true, Endpoint: hostOf(rpc)}, chain.NewSolana(chain.NewRPC(rpc)))
+	}
+	if base, ok := netEnv("RPC", "bitcoin", "https://mempool.space/api"); ok {
+		reg.Add(chain.NetworkInfo{ID: "bitcoin", Name: "Bitcoin", Family: "BITCOIN", NativeSymbol: "BTC", NativeDecimals: 8,
+			HasHistory: true, Endpoint: hostOf(base)}, chain.NewBitcoin(base))
+	}
+	return reg
 }

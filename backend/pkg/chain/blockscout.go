@@ -18,8 +18,16 @@ import (
 // Blockscout reads address history and public labels from a Blockscout v2 REST API
 // (no API key required). Data is third-party and carries that provenance.
 type Blockscout struct {
-	base string
-	hc   *http.Client
+	base   string
+	hc     *http.Client
+	symbol string // native currency symbol; "ETH" when unset
+}
+
+func (b *Blockscout) nativeSymbol() string {
+	if b.symbol == "" {
+		return "ETH"
+	}
+	return b.symbol
 }
 
 func NewBlockscout(base string) *Blockscout {
@@ -96,7 +104,7 @@ func orZero(s string) string {
 	return s
 }
 
-func (t bsTx) transfer() Transfer {
+func (t bsTx) transfer(symbol string) Transfer {
 	var bn uint64
 	if t.BlockNumber != nil {
 		bn = *t.BlockNumber
@@ -116,7 +124,7 @@ func (t bsTx) transfer() Transfer {
 	}
 	return Transfer{
 		TxHash: strings.ToLower(t.Hash), LogIndex: -1, Kind: "NATIVE",
-		From: strings.ToLower(t.From.Hash), To: to, Value: orZero(t.Value), Decimals: 18, Symbol: "ETH",
+		From: strings.ToLower(t.From.Hash), To: to, Value: orZero(t.Value), Decimals: 18, Symbol: symbol,
 		Timestamp: parseTime(t.Timestamp), BlockNumber: bn, Status: status,
 	}
 }
@@ -283,7 +291,7 @@ func (b *Blockscout) Activity(ctx context.Context, addr, kind, cursor string) (*
 			return nil, err
 		}
 		for _, it := range resp.Items {
-			page.Items = append(page.Items, it.transfer())
+			page.Items = append(page.Items, it.transfer(b.nativeSymbol()))
 		}
 		page.NextCursor = encodeCursor(resp.Next)
 	case "token":

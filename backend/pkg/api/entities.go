@@ -239,3 +239,12 @@ func (s *Server) lookupEntities(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, 200, v)
 }
+
+func (s *Server) search(w http.ResponseWriter, r *http.Request) {
+	v, err := s.st.SearchLocal(r.Context(), r.URL.Query().Get("q"))
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, 200, v)
+}

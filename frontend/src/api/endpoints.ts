@@ -2,7 +2,7 @@ import { useSettings } from '@/state/settingsStore';
 import { request } from './client';
 import type {
   ActivityPage, AddressSummary, AuditEntry, Case, CaseStatus, ChainResult, ChainTx, CustodyEvent,
-  AddressAttribution, AddressInput, BackupResult, Board, BoardClaim, Entity, EntityInput, Evidence, Finding, GraphSnapshot, GraphSnapshotSummary, Label, Note, ReportBundle, RestoreStatus, StageResult,
+  AddressAttribution, AddressInput, BackupResult, Board, BoardClaim, Entity, EntityInput, Evidence, Finding, NetworkInfo, SearchHit, GraphSnapshot, GraphSnapshotSummary, Label, Note, ReportBundle, RestoreStatus, StageResult,
 } from './types';
 
 const actor = (): string | undefined => useSettings.getState().analyst.trim() || undefined;
@@ -36,11 +36,13 @@ export const api = {
     custody: (id: string) =>
       request<{ events: CustodyEvent[]; chain: ChainResult }>('GET', `/api/evidence/${enc(id)}/custody`),
   },
+  search: (q: string) => request<SearchHit[]>('GET', `/api/search?q=${enc(q)}`),
   chain: {
-    address: (a: string) => request<AddressSummary>('GET', `/api/chain/address/${enc(a)}`),
-    activity: (a: string, kind: 'native' | 'token', cursor?: string) =>
-      request<ActivityPage>('GET', `/api/chain/address/${enc(a)}/activity?kind=${kind}${cursor ? `&cursor=${enc(cursor)}` : ''}`),
-    tx: (h: string) => request<ChainTx>('GET', `/api/chain/tx/${enc(h)}`),
+    networks: () => request<NetworkInfo[]>('GET', '/api/chain/networks'),
+    address: (a: string, network = 'ethereum-mainnet') => request<AddressSummary>('GET', `/api/chain/address/${enc(a)}?network=${enc(network)}`),
+    activity: (a: string, kind: 'native' | 'token', cursor?: string, network = 'ethereum-mainnet') =>
+      request<ActivityPage>('GET', `/api/chain/address/${enc(a)}/activity?network=${enc(network)}&kind=${kind}${cursor ? `&cursor=${enc(cursor)}` : ''}`),
+    tx: (h: string, network = 'ethereum-mainnet') => request<ChainTx>('GET', `/api/chain/tx/${enc(h)}?network=${enc(network)}`),
   },
   labels: {
     list: (f: { address?: string; caseId?: string } = {}) => {

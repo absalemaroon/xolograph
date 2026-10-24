@@ -7,8 +7,8 @@ import type { AddrDraft } from './AddressFields';
 import { ENTITY_TYPES, STATUSES, pretty } from './constants';
 
 /** Create (no `entity`) or edit the profile. Wallets of an existing entity are managed on its Wallets tab. */
-export function EntityFormModal({ entity, defaultAddress, onClose, onSaved }: {
-  entity?: Entity; defaultAddress?: string; onClose: () => void; onSaved: (e: Entity) => void;
+export function EntityFormModal({ entity, defaultAddress, defaultNetwork, onClose, onSaved }: {
+  entity?: Entity; defaultAddress?: string; defaultNetwork?: string; onClose: () => void; onSaved: (e: Entity) => void;
 }) {
   const [name, setName] = useState(entity?.name ?? '');
   const [type, setType] = useState(entity?.type ?? 'OTHER');
@@ -19,7 +19,7 @@ export function EntityFormModal({ entity, defaultAddress, onClose, onSaved }: {
   const [confidence, setConfidence] = useState<string>(entity?.confidence ?? 'LOW');
   const [notes, setNotes] = useState(entity?.notes ?? '');
   const [withWallet, setWithWallet] = useState(!!defaultAddress);
-  const [wallet, setWallet] = useState<AddrDraft>(emptyAddr(defaultAddress));
+  const [wallet, setWallet] = useState<AddrDraft>(emptyAddr(defaultAddress, defaultNetwork));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

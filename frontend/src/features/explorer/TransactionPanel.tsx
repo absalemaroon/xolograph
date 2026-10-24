@@ -3,6 +3,7 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { api } from '@/api/endpoints';
 import { Badge, Button, ErrorBanner, HashText, Panel, Spinner, StatusBadge } from '@/components/ui';
+import type { NetworkInfo } from '@/api/types';
 import { useAsync } from '@/hooks/useAsync';
 import { formatUTC } from '@/lib/format';
 import { formatUnits } from '@/lib/units';
@@ -10,8 +11,8 @@ import { AddrLink } from './AddrLink';
 import { AttachModal } from './AttachModal';
 import { ProvenanceList } from './Provenance';
 
-export function TransactionPanel({ hash }: { hash: string }) {
-  const { data, error, loading, reload } = useAsync(() => api.chain.tx(hash), [hash]);
+export function TransactionPanel({ hash, network, info }: { hash: string; network: string; info?: NetworkInfo }) {
+  const { data, error, loading, reload } = useAsync(() => api.chain.tx(hash, network), [hash, network]);
   const [attach, setAttach] = useState(false);
   if (loading && !data) return <Spinner label="Querying chain" />;
   if (error || !data) return <ErrorBanner message={error ?? 'No data'} onRetry={reload} />;
@@ -25,25 +26,40 @@ export function TransactionPanel({ hash }: { hash: string }) {
         <dl>
           {row('Block', t.blockNumber ? t.blockNumber.toLocaleString('en-US') : 'pending')}
           {row('Time', formatUTC(t.timestamp))}
-          {row('From', <AddrLink address={t.from} />)}
-          {row('To', t.to ? <AddrLink address={t.to} /> : t.contractCreated ? <span>Contract created: <AddrLink address={t.contractCreated} /></span> : '—')}
-          {row('Value', `${formatUnits(t.valueWei, 18, 8)} ETH`)}
-          {row('Fee', `${formatUnits(t.feeWei, 18, 8)} ETH`)}
-          {row('Gas used', t.gasUsed.toLocaleString('en-US'))}
+          {row('Network', info?.name ?? t.network)}
+          {row(info?.family === 'BITCOIN' ? 'First input' : 'From', <AddrLink address={t.from} network={network} />)}
+          {info?.family !== 'BITCOIN' && row('To', t.to ? <AddrLink address={t.to} network={network} /> : t.contractCreated ? <span>Contract created: <AddrLink address={t.contractCreated} network={network} /></span> : '—')}
+          {row(info?.family === 'SOLANA' ? 'System transfers' : 'Value', `${formatUnits(t.valueWei, t.nativeDecimals, 8)} ${t.nativeSymbol}`)}
+          {row('Fee', `${formatUnits(t.feeWei, t.nativeDecimals, 8)} ${t.nativeSymbol}`)}
+          {info?.family !== 'BITCOIN' && row(info?.family === 'SOLANA' ? 'Compute units' : 'Gas used', t.gasUsed.toLocaleString('en-US'))}
         </dl>
         {t.notes.map((n, i) => <p key={i} className="mt-3 text-[11px] text-fg-muted">{n}</p>)}
       </Panel>
+      {(t.inputs?.length || t.outputs?.length) ? (
+        <div className="grid gap-5 lg:grid-cols-2">
+          {([['Inputs', t.inputs ?? []], ['Outputs', t.outputs ?? []]] as const).map(([title, items]) => (
+            <Panel key={title} title={`${title} (${items.length})`} flush>
+              <table className="x-table">
+                <thead><tr><th>Address</th><th className="text-right">Amount ({t.nativeSymbol})</th></tr></thead>
+                <tbody>{items.map((x, i) => (
+                  <tr key={i}><td>{x.address ? <AddrLink address={x.address} network={network} /> : <span className="text-fg-muted">{x.type || 'no address'}</span>}</td><td className="text-right tabular-nums">{formatUnits(x.value, t.nativeDecimals, 8)}</td></tr>
+                ))}</tbody>
+              </table>
+            </Panel>
+          ))}
+        </div>
+      ) : (
       <Panel title={`Token transfers (${t.tokenTransfers.length})`} flush>
-        {t.tokenTransfers.length === 0 ? <p className="p-4 text-xs text-fg-muted">No ERC-20/721 Transfer events in this transaction.</p> : (
+        {t.tokenTransfers.length === 0 ? <p className="p-4 text-xs text-fg-muted">{info?.family === 'SOLANA' ? 'No parsed System or SPL Token transfers in this transaction.' : 'No ERC-20/721 Transfer events in this transaction.'}</p> : (
           <table className="x-table">
             <thead><tr><th>Std</th><th>Token</th><th>From</th><th>To</th><th className="text-right">Amount</th></tr></thead>
             <tbody>
               {t.tokenTransfers.map((x) => (
                 <tr key={x.logIndex}>
                   <td><Badge>{x.standard}</Badge></td>
-                  <td><div>{x.symbol || '—'}</div><HashText value={x.token} head={8} tail={4} /></td>
-                  <td><AddrLink address={x.from} /></td>
-                  <td><AddrLink address={x.to} /></td>
+                  <td><div>{x.symbol || '—'}</div>{x.token ? <HashText value={x.token} head={8} tail={4} /> : null}</td>
+                  <td><AddrLink address={x.from} network={network} /></td>
+                  <td><AddrLink address={x.to} network={network} /></td>
                   <td className="text-right tabular-nums">{x.standard === 'ERC721' ? `#${x.tokenId}` : x.decimals < 0 ? `${x.value} (raw)` : formatUnits(x.value, x.decimals)}</td>
                 </tr>
               ))}
@@ -51,8 +67,9 @@ export function TransactionPanel({ hash }: { hash: string }) {
           </table>
         )}
       </Panel>
+      )}
       <ProvenanceList items={t.provenance} />
-      {attach && <AttachModal spec={{ kind: 'TRANSACTION', refType: 'transaction', refId: t.hash, defaultTitle: `Transaction ${t.hash.slice(0, 10)}…`, snapshot: t }} onClose={() => setAttach(false)} />}
+      {attach && <AttachModal spec={{ kind: 'TRANSACTION', refType: 'transaction', refId: t.hash, defaultTitle: `Transaction ${t.hash.slice(0, 10)}…`, snapshot: { ...t, network } }} onClose={() => setAttach(false)} />}
     </div>
   );
 }

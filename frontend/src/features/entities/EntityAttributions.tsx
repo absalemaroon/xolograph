@@ -8,15 +8,15 @@ import { AttributionBadge } from './AttributionBadge';
 import { EntityFormModal } from './EntityFormModal';
 
 /** Explorer panel: which entity records claim this address, and how strongly. Rejected claims stay visible. */
-export function EntityAttributions({ address }: { address: string }) {
+export function EntityAttributions({ address, network = 'ethereum-mainnet' }: { address: string; network?: string }) {
   const openEntity = useNav((s) => s.openEntity);
-  const { data, error, reload } = useAsync(() => api.entities.forAddress(address), [address]);
+  const { data, error, reload } = useAsync(() => api.entities.forAddress(address, network), [address, network]);
   const [creating, setCreating] = useState(false);
   const rows = data ?? [];
   return (
     <Panel title="Entity attributions" actions={<Button size="sm" icon={<Plus size={12} />} onClick={() => setCreating(true)}>New entity</Button>}>
       {error ? <p className="text-xs">Could not load entity records: {error}</p> : rows.length === 0 ? (
-        <p className="text-xs text-fg-muted">No entity record claims this address. Absence of a record is not evidence that it has no owner.</p>
+        <p className="text-xs text-fg-muted">No entity record claims this address on this network. Absence of a record is not evidence that it has no owner.</p>
       ) : (
         <ul className="space-y-2">
           {rows.map((e) => (
@@ -27,7 +27,7 @@ export function EntityAttributions({ address }: { address: string }) {
           ))}
         </ul>
       )}
-      {creating && <EntityFormModal defaultAddress={address} onClose={() => setCreating(false)} onSaved={(e) => { reload(); openEntity(e.id); }} />}
+      {creating && <EntityFormModal defaultAddress={address} defaultNetwork={network} onClose={() => setCreating(false)} onSaved={(e) => { reload(); openEntity(e.id); }} />}
     </Panel>
   );
 }

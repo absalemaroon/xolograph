@@ -14,7 +14,6 @@ import (
 )
 
 const (
-	networkID     = "ethereum-mainnet"
 	transferTopic = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
 	maxTokenMeta  = 8 // contract metadata lookups per transaction
 )
@@ -27,6 +26,8 @@ type tokenMeta struct {
 // Ethereum combines a JSON-RPC node (authoritative state) with an optional
 // Blockscout instance (address history and third-party labels).
 type Ethereum struct {
+	net    string // network id
+	symbol string // native currency symbol
 	rpc    *RPC
 	bs     *Blockscout
 	mu     sync.Mutex
@@ -34,7 +35,15 @@ type Ethereum struct {
 }
 
 func NewEthereum(rpc *RPC, bs *Blockscout) *Ethereum {
-	return &Ethereum{rpc: rpc, bs: bs, tokens: map[string]tokenMeta{}}
+	return NewEVM("ethereum-mainnet", "ETH", rpc, bs)
+}
+
+// NewEVM builds an adapter for any EVM network (JSON-RPC for state, optional Blockscout for history and labels).
+func NewEVM(network, nativeSymbol string, rpc *RPC, bs *Blockscout) *Ethereum {
+	if bs != nil {
+		bs.symbol = nativeSymbol
+	}
+	return &Ethereum{net: network, symbol: nativeSymbol, rpc: rpc, bs: bs, tokens: map[string]tokenMeta{}}
 }
 
 func sanitize(s string) string {
@@ -56,7 +65,7 @@ func (e *Ethereum) Address(ctx context.Context, addr string) (*AddressSummary, e
 	if err != nil {
 		return nil, err
 	}
-	s := &AddressSummary{Address: a, Network: networkID, ThirdPartyLabels: []ThirdPartyLabel{}, Notes: []string{}, Provenance: []Provenance{}}
+	s := &AddressSummary{Address: a, Network: e.net, NativeSymbol: e.symbol, NativeDecimals: 18, ThirdPartyLabels: []ThirdPartyLabel{}, Notes: []string{}, Provenance: []Provenance{}}
 
 	raw, p, err := e.rpc.Call(ctx, "eth_getBalance", a, "latest")
 	if err != nil {
@@ -119,7 +128,7 @@ func (e *Ethereum) Transaction(ctx context.Context, hash string) (*Transaction, 
 		return nil, fmt.Errorf("%w: malformed transaction payload", ErrUpstream)
 	}
 	out := &Transaction{
-		Hash: strings.ToLower(tx.Hash), Network: networkID, Status: "PENDING",
+		Hash: strings.ToLower(tx.Hash), Network: e.net, NativeSymbol: e.symbol, NativeDecimals: 18, Status: "PENDING",
 		From: strings.ToLower(tx.From), ValueWei: hexBig(tx.Value).String(),
 		TokenTransfers: []TokenTransfer{}, Notes: []string{},
 	}

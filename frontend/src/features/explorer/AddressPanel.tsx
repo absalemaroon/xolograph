@@ -1,7 +1,7 @@
 import { Network, Plus, Tag } from 'lucide-react';
 import { useState } from 'react';
 import { api } from '@/api/endpoints';
-import type { Provenance } from '@/api/types';
+import type { NetworkInfo, Provenance } from '@/api/types';
 import { Badge, Button, ErrorBanner, Panel, Spinner, Stat } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
 import { formatUTC } from '@/lib/format';
@@ -14,10 +14,11 @@ import { EntityAttributions } from '../entities/EntityAttributions';
 import { LabelModal } from './LabelModal';
 import { ProvenanceList } from './Provenance';
 
-export function AddressPanel({ address }: { address: string }) {
+export function AddressPanel({ address, network, info }: { address: string; network: string; info?: NetworkInfo }) {
   const openGraph = useNav((s) => s.openGraph);
-  const summary = useAsync(() => api.chain.address(address), [address]);
-  const labels = useAsync(() => api.labels.list({ address }), [address]);
+  const summary = useAsync(() => api.chain.address(address, network), [address, network]);
+  const isEth = network === 'ethereum-mainnet';
+  const labels = useAsync(() => (isEth ? api.labels.list({ address }) : Promise.resolve([])), [address, isEth]);
   const [tab, setTab] = useState<'native' | 'token'>('native');
   const [attach, setAttach] = useState<AttachSpec | null>(null);
   const [labeling, setLabeling] = useState(false);
@@ -34,19 +35,20 @@ export function AddressPanel({ address }: { address: string }) {
         title="Address"
         actions={
           <>
-            <Button size="sm" icon={<Network size={12} />} onClick={() => openGraph(s.address)}>Graph</Button>
-            <Button size="sm" icon={<Tag size={12} />} onClick={() => setLabeling(true)}>Label</Button>
-            <Button size="sm" variant="primary" icon={<Plus size={12} />} onClick={() => setAttach({ kind: 'ADDRESS', refType: 'address', refId: s.address, defaultTitle: `Address ${s.address.slice(0, 10)}…`, snapshot: { summary: s, retrievedBy: 'xolograph-explorer' } })}>Attach to case</Button>
+            {isEth && <Button size="sm" icon={<Network size={12} />} onClick={() => openGraph(s.address)}>Graph</Button>}
+            {isEth && <Button size="sm" icon={<Tag size={12} />} onClick={() => setLabeling(true)}>Case label</Button>}
+            <Button size="sm" variant="primary" icon={<Plus size={12} />} onClick={() => setAttach({ kind: 'ADDRESS', refType: 'address', refId: s.address, defaultTitle: `Address ${s.address.slice(0, 10)}…`, snapshot: { summary: s, network, retrievedBy: 'xolograph-explorer' } })}>Attach to case</Button>
           </>
         }
       >
         <div className="flex flex-wrap items-center gap-3">
           <code className="break-all text-sm font-semibold">{s.address}</code>
-          <Badge tone="outline">{s.isContract ? 'Contract' : 'EOA'}</Badge>
+          <Badge tone="outline">{info?.name ?? s.network}</Badge>
+          <Badge tone="outline">{s.isContract ? (info?.family === 'SOLANA' ? 'Program' : 'Contract') : info?.family === 'EVM' ? 'EOA' : 'Account'}</Badge>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-3">
-          <Stat label="Balance (ETH)" value={formatUnits(s.balanceWei, 18, 6)} hint="Latest block" />
-          <Stat label="Nonce" value={s.nonce} hint={s.isContract ? 'Contract nonce' : 'Outgoing transactions'} />
+          <Stat label={`Balance (${s.nativeSymbol})`} value={formatUnits(s.balanceWei, s.nativeDecimals, 8)} hint={info?.family === 'BITCOIN' ? 'Confirmed only' : 'Latest state'} />
+          {(info?.family ?? 'EVM') === 'EVM' && <Stat label="Nonce" value={s.nonce} hint={s.isContract ? 'Contract nonce' : 'Outgoing transactions'} />}
           <Stat label="Third-party labels" value={s.thirdPartyLabels.length} />
         </div>
         {s.thirdPartyLabels.length > 0 && (
@@ -58,7 +60,7 @@ export function AddressPanel({ address }: { address: string }) {
         {s.notes.map((n, i) => <p key={i} className="mt-3 text-[11px] text-fg-muted">{n}</p>)}
       </Panel>
 
-      <EntityAttributions address={s.address} />
+      <EntityAttributions address={s.address} network={network} />
 
       {(labels.data ?? []).length > 0 && (
         <Panel title="Analyst labels (your cases)" flush>
@@ -82,13 +84,19 @@ export function AddressPanel({ address }: { address: string }) {
 
       <div>
         <div role="tablist" aria-label="Activity" className="mb-3 flex border-b border-line">
-          {([['native', 'ETH transactions'], ['token', 'Token transfers']] as const).map(([k, label]) => (
+          {(info?.family === 'BITCOIN' ? ([['native', `${s.nativeSymbol} transactions`]] as const) : ([['native', `${s.nativeSymbol} transfers`], ['token', info?.family === 'SOLANA' ? 'SPL token transfers' : 'Token transfers']] as const)).map(([k, label]) => (
             <button key={k} role="tab" type="button" aria-selected={tab === k} onClick={() => setTab(k)}
               className={`-mb-px border-b-2 px-4 py-2.5 text-xs uppercase tracking-[0.14em] ${tab === k ? 'border-fg font-semibold' : 'border-transparent text-fg-muted hover:text-fg'}`}>{label}</button>
           ))}
         </div>
-        <ActivityTable key={`${address}-${tab}`} address={s.address} kind={tab} onAttach={setAttach} onProvenance={addProv} />
-        <p className="mt-2 text-[11px] text-fg-muted">History comes from a third-party index and may be incomplete or lag the chain head. Absence of a transfer is not proof it did not occur.</p>
+        {info && !info.hasHistory ? (
+          <p className="border border-line bg-raised p-4 text-xs text-fg-muted">No address-history source is configured for {info.name}. Balance and transaction lookups still work. Set XOLOGRAPH_HISTORY_{network.toUpperCase().replace(/-/g, '_')} to a Blockscout v2 URL to enable history.</p>
+        ) : (
+          <>
+            <ActivityTable key={`${network}-${address}-${tab}`} address={s.address} network={network} kind={tab} onAttach={setAttach} onProvenance={addProv} />
+            <p className="mt-2 text-[11px] text-fg-muted">History comes from third-party indexes or public nodes and may be incomplete or lag the chain head. Absence of a transfer is not proof it did not occur.</p>
+          </>
+        )}
       </div>
 
       <ProvenanceList items={[...s.provenance, ...pages]} />

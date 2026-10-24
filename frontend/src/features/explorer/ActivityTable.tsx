@@ -7,8 +7,8 @@ import { formatUnits } from '@/lib/units';
 import { AddrLink } from './AddrLink';
 import type { AttachSpec } from './AttachModal';
 
-export function ActivityTable({ address, kind, onAttach, onProvenance }: {
-  address: string; kind: 'native' | 'token'; onAttach: (s: AttachSpec) => void; onProvenance: (p: Provenance) => void;
+export function ActivityTable({ address, network = 'ethereum-mainnet', kind, onAttach, onProvenance }: {
+  address: string; network?: string; kind: 'native' | 'token'; onAttach: (s: AttachSpec) => void; onProvenance: (p: Provenance) => void;
 }) {
   const [items, setItems] = useState<Transfer[]>([]);
   const [cursor, setCursor] = useState('');
@@ -21,7 +21,7 @@ export function ActivityTable({ address, kind, onAttach, onProvenance }: {
     setLoading(true);
     setError(null);
     try {
-      const page = await api.chain.activity(address, kind, next || undefined);
+      const page = await api.chain.activity(address, kind, next || undefined, network);
       if (my !== gen.current) return;
       setItems((cur) => (reset ? page.items : [...cur, ...page.items]));
       setCursor(page.nextCursor);
@@ -32,7 +32,7 @@ export function ActivityTable({ address, kind, onAttach, onProvenance }: {
       if (my === gen.current) setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [address, kind]);
+  }, [address, kind, network]);
 
   useEffect(() => { setItems([]); setCursor(''); void load('', true); }, [load]);
 
@@ -53,13 +53,13 @@ export function ActivityTable({ address, kind, onAttach, onProvenance }: {
                   <td className="whitespace-nowrap text-fg-muted">{formatUTC(t.timestamp)}</td>
                   <td><HashText value={t.txHash} head={8} tail={4} /></td>
                   <td><Badge tone={dir(t) === 'OUT' ? 'outline' : 'neutral'}>{dir(t)}</Badge></td>
-                  <td><AddrLink address={t.from} /></td>
-                  <td><AddrLink address={t.to} /></td>
+                  <td><AddrLink address={t.from} network={network} /></td>
+                  <td><AddrLink address={t.to} network={network} /></td>
                   <td className="whitespace-nowrap text-right tabular-nums">
-                    {t.kind === 'ERC721' || t.kind === 'ERC1155' ? `#${t.tokenId ?? '?'}` : formatUnits(t.value, t.decimals)} <span className="text-fg-muted">{t.symbol || (t.decimals < 0 ? 'raw units' : '')}</span>
+                    {t.kind === 'ERC721' || t.kind === 'ERC1155' ? `#${t.tokenId ?? '?'}` : t.decimals < 0 ? `${t.value} (raw)` : formatUnits(t.value, t.decimals)} <span className="text-fg-muted">{t.symbol || (t.kind === 'SPL' ? 'SPL token' : t.decimals < 0 ? 'raw units' : '')}</span>
                   </td>
                   <td>{t.status === 'FAILED' ? <Badge tone="alert">▲ Failed</Badge> : <span className="text-[10px] uppercase text-fg-muted">{t.status}</span>}</td>
-                  <td className="text-right"><Button size="sm" variant="ghost" onClick={() => onAttach({ kind: 'TRANSACTION', refType: 'transaction', refId: t.txHash, defaultTitle: `${kind === 'native' ? 'Transfer' : t.symbol || 'Token transfer'} in ${t.txHash.slice(0, 10)}…`, snapshot: t })}>Attach</Button></td>
+                  <td className="text-right"><Button size="sm" variant="ghost" onClick={() => onAttach({ kind: 'TRANSACTION', refType: 'transaction', refId: t.txHash, defaultTitle: `${kind === 'native' ? 'Transfer' : t.symbol || 'Token transfer'} in ${t.txHash.slice(0, 10)}…`, snapshot: { ...t, network } })}>Attach</Button></td>
                 </tr>
               ))}
             </tbody>

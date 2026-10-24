@@ -194,7 +194,7 @@ export function BoardTab({ caseId, onChanged }: { caseId: string; onChanged: () 
                 {selNode.kind === 'WALLET' && (
                   <div className="space-y-2"><HashText value={selNode.refId} head={10} tail={8} />
                     {(attrib.data?.[selNode.refId] ?? []).map((a) => <div key={a.entityId} className="flex flex-wrap items-center gap-2"><button type="button" className="underline-offset-2 hover:underline" onClick={() => openEntity(a.entityId)}>{a.name}</button><AttributionBadge status={a.status} /></div>)}
-                    {selNode.network === 'ethereum-mainnet' && <Button size="sm" onClick={() => openExplorer(selNode.refId)}>Open in Explorer</Button>}</div>
+                    <Button size="sm" onClick={() => openExplorer(selNode.refId, selNode.network)}>Open in Explorer</Button></div>
                 )}
                 {selNode.kind === 'EVIDENCE' && <div className="space-y-1"><HashText value={selNode.evidenceHash ?? ''} head={12} tail={8} /><Badge tone={selNode.evidenceState === 'FAILED' ? 'alert' : 'neutral'}>{selNode.evidenceState}</Badge></div>}
                 <div className="flex gap-2 border-t border-line pt-3">

@@ -236,3 +236,44 @@ func TestLookupAddressesAndGraphSnapshots(t *testing.T) {
 		t.Fatal("snapshot still present")
 	}
 }
+
+func TestMoreNetworksAndLocalSearch(t *testing.T) {
+	ctx, s := context.Background(), newStore(t)
+	const btc = "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq"
+	e, err := s.CreateEntity(ctx, EntityInput{Name: "Cold Storage 100%", Addresses: []AddressInput{
+		{Network: "bitcoin", Address: strings.ToUpper(btc), Status: "SUSPECTED"},
+		{Network: "gnosis", Address: addrA, Status: "SUSPECTED"},
+		{Network: "solana", Address: solA, Status: "SUSPECTED"},
+	}}, "")
+	if err != nil || e.AddressCount != 3 {
+		t.Fatalf("multi-network entity: %+v %v", e, err)
+	}
+	for _, a := range e.Addresses {
+		if a.Network == "bitcoin" && a.Address != btc {
+			t.Fatalf("bech32 not normalised: %s", a.Address)
+		}
+	}
+	if _, err := s.AddEntityAddress(ctx, e.ID, AddressInput{Network: "bitcoin", Address: addrA}, ""); !errors.Is(err, ErrInvalid) {
+		t.Fatal("EVM address accepted as bitcoin")
+	}
+
+	c, _ := s.CreateCase(ctx, "Cold storage case", "", "")
+	if hits, err := s.SearchLocal(ctx, "x"); err != nil || len(hits) != 0 {
+		t.Fatalf("too-short query: %+v %v", hits, err)
+	}
+	hits, err := s.SearchLocal(ctx, "cold storage")
+	kinds := map[string]bool{}
+	for _, h := range hits {
+		kinds[h.Kind] = true
+		if h.Kind == "CASE" && h.CaseID != c.ID {
+			t.Fatalf("case hit must carry its id: %+v", h)
+		}
+	}
+	if err != nil || !kinds["ENTITY"] || !kinds["CASE"] {
+		t.Fatalf("search: %+v %v", hits, err)
+	}
+	// LIKE wildcards in the query are literal, so "%" does not match everything.
+	if hits, _ := s.SearchLocal(ctx, "zz%"); len(hits) != 0 {
+		t.Fatalf("wildcard leaked: %+v", hits)
+	}
+}

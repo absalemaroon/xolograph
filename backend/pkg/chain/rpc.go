@@ -84,11 +84,15 @@ func unquote(raw json.RawMessage) string {
 type RPC struct {
 	endpoint string
 	hc       *http.Client
+	source   string
 }
 
 func NewRPC(endpoint string) *RPC {
-	return &RPC{endpoint: endpoint, hc: &http.Client{Timeout: 15 * time.Second}}
+	return &RPC{endpoint: endpoint, hc: &http.Client{Timeout: 15 * time.Second}, source: "ETHEREUM_JSON_RPC"}
 }
+
+// WithSource labels provenance records produced by this client (e.g. SOLANA_JSON_RPC).
+func (r *RPC) WithSource(src string) *RPC { r.source = src; return r }
 
 func (r *RPC) Call(ctx context.Context, method string, params ...any) (json.RawMessage, Provenance, error) {
 	if params == nil {
@@ -127,7 +131,7 @@ func (r *RPC) Call(ctx context.Context, method string, params ...any) (json.RawM
 		return nil, Provenance{}, fmt.Errorf("%w: RPC error %d: %s", ErrUpstream, out.Error.Code, out.Error.Message)
 	}
 	return out.Result, Provenance{
-		Source: "ETHEREUM_JSON_RPC", Endpoint: redact(r.endpoint), Query: method + string(pj),
+		Source: r.source, Endpoint: redact(r.endpoint), Query: method + string(pj),
 		RetrievedAt: time.Now().UTC(), PayloadSHA256: sum(raw),
 		Coverage: "Node state at query time; depends on the node's pruning policy.",
 	}, nil

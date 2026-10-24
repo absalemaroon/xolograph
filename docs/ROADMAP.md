@@ -6,7 +6,7 @@
 | 2 | Entity foundation: multi-wallet, attribution status/history, identifiers, linked evidence, profile UI, explorer attributions | Written; run CI to verify |
 | 3 | Entity wallet graph: multi-seed, entity labels on nodes, filters, inspector, saved views | Written; run CI to verify |
 | 4 | Case relationship board (facts vs hypotheses, evidence-backed links) | Written; run CI to verify |
-| 5 | Multi-chain explorer, universal search, provider adapters | Planned |
+| 5 | Multi-chain explorer (EVM family, Solana, Bitcoin), universal search, provider registry | Written; run CI to verify (see docs/NETWORKS.md) |
 | 6 | Portfolio and qualified P&L | Planned |
 | 7 | Tools: file and metadata inspector | Planned |
 | 8 | Hardening, packaging, docs | Planned |

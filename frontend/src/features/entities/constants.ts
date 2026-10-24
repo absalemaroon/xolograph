@@ -21,11 +21,18 @@ export const NETWORKS = [
   { value: 'optimism', label: 'Optimism' },
   { value: 'polygon', label: 'Polygon' },
   { value: 'bsc', label: 'BNB Smart Chain' },
+  { value: 'gnosis', label: 'Gnosis' },
+  { value: 'avalanche', label: 'Avalanche C-Chain' },
+  { value: 'scroll', label: 'Scroll' },
+  { value: 'celo', label: 'Celo' },
   { value: 'solana', label: 'Solana' },
+  { value: 'bitcoin', label: 'Bitcoin' },
 ];
 export const networkLabel = (n: string): string => NETWORKS.find((x) => x.value === n)?.label ?? n;
-/** Only Ethereum mainnet has an explorer/graph adapter today; other chains are recorded, not queried. */
-export const explorerSupported = (n: string): boolean => n === 'ethereum-mainnet';
+/** Every listed network has an explorer adapter (the engine can disable one; the Explorer then reports it). */
+export const explorerSupported = (n: string): boolean => NETWORKS.some((x) => x.value === n);
+/** The value-flow graph is built on Ethereum mainnet activity only. */
+export const graphSupported = (n: string): boolean => n === 'ethereum-mainnet';
 
 export const PLATFORMS = ['WEBSITE', 'X', 'TELEGRAM', 'DISCORD', 'FACEBOOK', 'LINKEDIN', 'GITHUB', 'EMAIL', 'OTHER'] as const;
 export const IDENT_STATUSES = [
@@ -37,6 +44,8 @@ export const IDENT_STATUSES = [
 
 const EVM = /^0x[0-9a-fA-F]{40}$/;
 const SOL = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
-export const isValidAddress = (network: string, a: string): boolean => (network === 'solana' ? SOL.test(a.trim()) : EVM.test(a.trim()));
+const BTC = /^([13][a-km-zA-HJ-NP-Z1-9]{25,34}|bc1[a-zA-HJ-NP-Z0-9]{11,87})$/i;
+export const isValidAddress = (network: string, a: string): boolean =>
+  network === 'solana' ? SOL.test(a.trim()) : network === 'bitcoin' ? BTC.test(a.trim()) : EVM.test(a.trim());
 
 export const pretty = (v: string): string => v.replace(/_/g, ' ').toLowerCase().replace(/^\w/, (c) => c.toUpperCase());

@@ -29,8 +29,9 @@ var (
 	confidences         = set("LOW", "MEDIUM", "HIGH")
 	identPlatforms      = set("WEBSITE", "X", "TELEGRAM", "DISCORD", "FACEBOOK", "LINKEDIN", "GITHUB", "EMAIL", "OTHER")
 	identStatuses       = set("UNVERIFIED", "PUBLICLY_LISTED", "VERIFIED", "DISPUTED")
-	evmNetworks         = set("ethereum-mainnet", "base", "arbitrum", "optimism", "polygon", "bsc")
+	evmNetworks         = set("ethereum-mainnet", "base", "arbitrum", "optimism", "polygon", "bsc", "gnosis", "avalanche", "scroll", "celo")
 	solanaRe            = regexp.MustCompile(`^[1-9A-HJ-NP-Za-km-z]{32,44}$`)
+	btcAddrRe           = regexp.MustCompile(`^([13][a-km-zA-HJ-NP-Z1-9]{25,34}|(?i:bc1)[a-zA-HJ-NP-Z0-9]{11,87})$`)
 )
 
 func set(v ...string) map[string]bool {
@@ -152,6 +153,14 @@ func upper(s, def string) string {
 func NormalizeAddress(network, addr string) (string, error) {
 	addr = strings.TrimSpace(addr)
 	switch {
+	case network == "bitcoin":
+		if !btcAddrRe.MatchString(addr) {
+			return "", fmt.Errorf("%w: invalid Bitcoin address", ErrInvalid)
+		}
+		if strings.HasPrefix(strings.ToLower(addr), "bc1") {
+			addr = strings.ToLower(addr)
+		}
+		return addr, nil
 	case network == "solana":
 		if !solanaRe.MatchString(addr) {
 			return "", fmt.Errorf("%w: invalid Solana address", ErrInvalid)

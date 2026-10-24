@@ -5,8 +5,8 @@ export interface AddrDraft {
   network: string; address: string; label: string; role: string; status: string; confidence: string;
   sourceType: string; sourceRef: string; basis: string; notes: string;
 }
-export const emptyAddr = (address = ''): AddrDraft => ({
-  network: 'ethereum-mainnet', address, label: '', role: '', status: 'UNKNOWN', confidence: 'LOW', sourceType: '', sourceRef: '', basis: '', notes: '',
+export const emptyAddr = (address = '', network = 'ethereum-mainnet'): AddrDraft => ({
+  network, address, label: '', role: '', status: 'UNKNOWN', confidence: 'LOW', sourceType: '', sourceRef: '', basis: '', notes: '',
 });
 
 /** Mirrors the engine's rules for fast feedback; the engine remains authoritative. */

@@ -29,8 +29,14 @@ export interface Provenance {
   source: string; endpoint: string; query: string; retrievedAt: string; payloadSha256: string; coverage: string;
 }
 export interface ThirdPartyLabel { name: string; kind: string; source: string }
+export interface NetworkInfo {
+  id: string; name: string; family: 'EVM' | 'SOLANA' | 'BITCOIN'; nativeSymbol: string; nativeDecimals: number;
+  hasHistory: boolean; hasLabels: boolean; endpoint: string;
+}
+export interface SearchHit { kind: 'ENTITY' | 'CASE' | 'EVIDENCE' | 'LABEL'; id: string; title: string; subtitle: string; caseId?: string }
+export interface TxIO { address: string; value: string; type?: string }
 export interface AddressSummary {
-  address: string; network: string; balanceWei: string; nonce: number; isContract: boolean;
+  address: string; network: string; nativeSymbol: string; nativeDecimals: number; balanceWei: string; nonce: number; isContract: boolean;
   thirdPartyLabels: ThirdPartyLabel[]; notes: string[]; provenance: Provenance[];
 }
 export interface Transfer {
@@ -46,7 +52,7 @@ export interface TokenTransfer {
   from: string; to: string; value: string; tokenId?: string;
 }
 export interface ChainTx {
-  hash: string; network: string; status: string; blockNumber: number; blockHash?: string; timestamp?: string;
+  hash: string; network: string; nativeSymbol: string; nativeDecimals: number; inputs?: TxIO[]; outputs?: TxIO[]; status: string; blockNumber: number; blockHash?: string; timestamp?: string;
   from: string; to: string; contractCreated?: string; valueWei: string; gasUsed: number;
   gasPriceWei: string; feeWei: string; tokenTransfers: TokenTransfer[]; notes: string[]; provenance: Provenance[];
 }

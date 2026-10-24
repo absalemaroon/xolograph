@@ -26,10 +26,49 @@ type Server struct {
 	st    *store.Store
 	token string
 	chain ChainProvider // may be nil: chain endpoints then answer 503
+	reg   *chain.Registry // multi-network registry; when set it takes precedence over chain
 }
 
 func New(st *store.Store, token string, cp ChainProvider) *Server {
 	return &Server{st: st, token: token, chain: cp}
+}
+
+// NewMulti serves every network in the registry; the `network` query parameter selects one (default ethereum-mainnet).
+func NewMulti(st *store.Store, token string, reg *chain.Registry) *Server {
+	return &Server{st: st, token: token, reg: reg}
+}
+
+// provider resolves the data source for the request's `network` parameter, writing the error response itself on failure.
+func (s *Server) provider(w http.ResponseWriter, r *http.Request) (ChainProvider, bool) {
+	network := r.URL.Query().Get("network")
+	if network == "" {
+		network = "ethereum-mainnet"
+	}
+	if s.reg != nil {
+		p, _, ok := s.reg.Get(network)
+		if !ok || p == nil {
+			writeErr(w, 400, "unsupported network: "+network)
+			return nil, false
+		}
+		return p, true
+	}
+	if s.chain == nil {
+		writeErr(w, 503, "blockchain data source not configured")
+		return nil, false
+	}
+	if network != "ethereum-mainnet" {
+		writeErr(w, 400, "unsupported network: "+network)
+		return nil, false
+	}
+	return s.chain, true
+}
+
+func (s *Server) chainNetworks(w http.ResponseWriter, r *http.Request) {
+	if s.reg != nil {
+		writeJSON(w, 200, s.reg.Networks())
+		return
+	}
+	writeJSON(w, 200, []chain.NetworkInfo{{ID: "ethereum-mainnet", Name: "Ethereum", Family: "EVM", NativeSymbol: "ETH", NativeDecimals: 18, HasHistory: true}})
 }
 
 var allowedOrigins = map[string]bool{
@@ -66,6 +105,8 @@ func (s *Server) Handler() http.Handler {
 	m.HandleFunc("POST /api/cases/{id}/findings", s.addFinding)
 	m.HandleFunc("POST /api/evidence/{id}/verify", s.verifyEvidence)
 	m.HandleFunc("GET /api/evidence/{id}/custody", s.custody)
+	m.HandleFunc("GET /api/chain/networks", s.chainNetworks)
+	m.HandleFunc("GET /api/search", s.search)
 	m.HandleFunc("GET /api/chain/address/{addr}", s.chainAddress)
 	m.HandleFunc("GET /api/chain/address/{addr}/activity", s.chainActivity)
 	m.HandleFunc("GET /api/chain/tx/{hash}", s.chainTx)
@@ -355,10 +396,11 @@ func (s *Server) noChain(w http.ResponseWriter) bool {
 }
 
 func (s *Server) chainAddress(w http.ResponseWriter, r *http.Request) {
-	if s.noChain(w) {
+	p, ok := s.provider(w, r)
+	if !ok {
 		return
 	}
-	v, err := s.chain.Address(r.Context(), r.PathValue("addr"))
+	v, err := p.Address(r.Context(), r.PathValue("addr"))
 	if err != nil {
 		fail(w, err)
 		return
@@ -367,11 +409,12 @@ func (s *Server) chainAddress(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) chainActivity(w http.ResponseWriter, r *http.Request) {
-	if s.noChain(w) {
+	p, ok := s.provider(w, r)
+	if !ok {
 		return
 	}
 	q := r.URL.Query()
-	v, err := s.chain.Activity(r.Context(), r.PathValue("addr"), q.Get("kind"), q.Get("cursor"))
+	v, err := p.Activity(r.Context(), r.PathValue("addr"), q.Get("kind"), q.Get("cursor"))
 	if err != nil {
 		fail(w, err)
 		return
@@ -380,10 +423,11 @@ func (s *Server) chainActivity(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) chainTx(w http.ResponseWriter, r *http.Request) {
-	if s.noChain(w) {
+	p, ok := s.provider(w, r)
+	if !ok {
 		return
 	}
-	v, err := s.chain.Transaction(r.Context(), r.PathValue("hash"))
+	v, err := p.Transaction(r.Context(), r.PathValue("hash"))
 	if err != nil {
 		fail(w, err)
 		return

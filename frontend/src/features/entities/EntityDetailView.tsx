@@ -16,7 +16,7 @@ import { ConfirmModal } from './ConfirmModal';
 import { EntityFormModal } from './EntityFormModal';
 import { IdentifierModal } from './IdentifierModal';
 import { LinkEvidenceModal } from './LinkEvidenceModal';
-import { STATUSES, explorerSupported, networkLabel, pretty } from './constants';
+import { STATUSES, explorerSupported, graphSupported, networkLabel, pretty } from './constants';
 
 type Tab = 'overview' | 'wallets' | 'identifiers' | 'evidence' | 'activity';
 const TABS: { id: Tab; label: string }[] = [
@@ -81,10 +81,10 @@ export function EntityDetailView({ id }: { id: string }) {
 function Overview({ e }: { e: Entity }) {
   const addrs = e.addresses ?? [];
   const counts = STATUSES.map((s) => ({ s, n: addrs.filter((a) => a.status === s.value).length })).filter((x) => x.n > 0);
-  const unsupported = addrs.filter((a) => !explorerSupported(a.network)).length;
+  const unsupported = addrs.filter((a) => !graphSupported(a.network)).length;
   const warnings: string[] = [];
   if (addrs.length === 0) warnings.push('No wallets are associated with this entity, so there is no on-chain activity to show.');
-  if (unsupported > 0) warnings.push(`${unsupported} wallet(s) are on chains without an explorer adapter. They are recorded but not queried.`);
+  if (unsupported > 0) warnings.push(`${unsupported} wallet(s) are on networks the graph does not cover yet (graphs use Ethereum mainnet activity). They are still browsable in the Explorer.`);
   if (addrs.some((a) => a.status === 'DISPUTED')) warnings.push('Some wallet attributions are disputed.');
   if (e.status === 'VERIFIED' && addrs.length > 0 && !addrs.some((a) => a.status === 'VERIFIED')) warnings.push('The entity is marked verified but none of its wallets are. Entity identity and wallet ownership are separate claims.');
   return (
@@ -112,7 +112,7 @@ function Wallets({ e, onChange }: { e: Entity; onChange: () => void }) {
   const [removing, setRemoving] = useState<EntityAddress | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const addrs = e.addresses ?? [];
-  const graphable = [...new Set(addrs.filter((a) => explorerSupported(a.network) && a.status !== 'REJECTED').map((a) => a.address))].slice(0, 10);
+  const graphable = [...new Set(addrs.filter((a) => graphSupported(a.network) && a.status !== 'REJECTED').map((a) => a.address))].slice(0, 10);
   return (
     <Panel title="Associated wallets" flush actions={<div className="flex gap-2">
       {graphable.length > 0 && <Button size="sm" icon={<Network size={12} />} onClick={() => openGraphMulti(graphable)}>Graph wallets ({graphable.length})</Button>}
@@ -137,8 +137,8 @@ function Wallets({ e, onChange }: { e: Entity; onChange: () => void }) {
                       <div className="flex justify-end gap-1">
                         {explorerSupported(a.network) ? (
                           <>
-                            <Button size="sm" variant="ghost" icon={<Search size={12} />} onClick={() => openExplorer(a.address)}>Explorer</Button>
-                            <Button size="sm" variant="ghost" icon={<Network size={12} />} onClick={() => openGraph(a.address)}>Graph</Button>
+                            <Button size="sm" variant="ghost" icon={<Search size={12} />} onClick={() => openExplorer(a.address, a.network)}>Explorer</Button>
+                            {graphSupported(a.network) && <Button size="sm" variant="ghost" icon={<Network size={12} />} onClick={() => openGraph(a.address)}>Graph</Button>}
                           </>
                         ) : <span className="self-center text-[10px] uppercase text-fg-muted">No adapter</span>}
                         <Button size="sm" variant="ghost" icon={<Pencil size={12} />} aria-label="Edit claim" onClick={() => setEditing(a)} />
@@ -232,25 +232,28 @@ function EvidenceTab({ e, onChange }: { e: Entity; onChange: () => void }) {
 
 function Activity({ e }: { e: Entity }) {
   const wallets = (e.addresses ?? []).filter((a) => explorerSupported(a.network) && a.status !== 'REJECTED');
-  const [sel, setSel] = useState(wallets[0]?.address ?? '');
+  const [sel, setSel] = useState(wallets[0]?.id ?? '');
   const [kind, setKind] = useState<'native' | 'token'>('native');
   const [attach, setAttach] = useState<AttachSpec | null>(null);
   const [pages, setPages] = useState<Provenance[]>([]);
   const addProv = (p: Provenance) => setPages((cur) => (cur.some((c) => c.payloadSha256 === p.payloadSha256 && c.query === p.query) ? cur : [...cur, p]));
-  if (wallets.length === 0) return <EmptyState title="No queryable wallets" hint="Activity needs at least one non-rejected Ethereum mainnet wallet. Other chains have no adapter yet." />;
-  const current = wallets.some((w) => w.address === sel) ? sel : wallets[0].address;
+  const networks = useAsync(() => api.chain.networks(), []);
+  if (wallets.length === 0) return <EmptyState title="No queryable wallets" hint="Activity needs at least one non-rejected wallet on a supported network." />;
+  const cur = wallets.find((w) => w.id === sel) ?? wallets[0];
+  const info = (networks.data ?? []).find((n) => n.id === cur.network);
+  const kinds = info?.family === 'BITCOIN' ? ([['native', `${info.nativeSymbol} transactions`]] as const) : ([['native', `${info?.nativeSymbol ?? 'Native'} transfers`], ['token', 'Token transfers']] as const);
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <Select aria-label="Wallet" className="max-w-md" value={current} onChange={(ev) => setSel(ev.target.value)}>
-          {wallets.map((w) => <option key={w.id} value={w.address}>{w.label ? `${w.label} · ` : ''}{w.address}</option>)}
+        <Select aria-label="Wallet" className="max-w-md" value={cur.id} onChange={(ev) => { setSel(ev.target.value); setKind('native'); }}>
+          {wallets.map((w) => <option key={w.id} value={w.id}>{networkLabel(w.network)} · {w.label ? `${w.label} · ` : ''}{w.address}</option>)}
         </Select>
-        {([['native', 'ETH transactions'], ['token', 'Token transfers']] as const).map(([k, label]) => (
+        {kinds.map(([k, label]) => (
           <Button key={k} variant={kind === k ? 'primary' : 'secondary'} size="sm" onClick={() => setKind(k)}>{label}</Button>
         ))}
       </div>
-      <p className="text-[11px] text-fg-muted">Activity is shown for one wallet at a time. An entity-wide aggregate is not implemented, and history comes from a third-party index that may be incomplete.</p>
-      <ActivityTable key={`${current}-${kind}`} address={current} kind={kind} onAttach={setAttach} onProvenance={addProv} />
+      <p className="text-[11px] text-fg-muted">Activity is shown for one wallet at a time. An entity-wide aggregate is not implemented, and history comes from third-party indexes or public nodes and may be incomplete.</p>
+      <ActivityTable key={`${cur.id}-${kind}`} address={cur.address} network={cur.network} kind={kind} onAttach={setAttach} onProvenance={addProv} />
       <ProvenanceList items={pages} />
       {attach && <AttachModal spec={attach} onClose={() => setAttach(null)} />}
     </div>
