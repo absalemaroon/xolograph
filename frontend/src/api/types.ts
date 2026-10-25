@@ -125,3 +125,26 @@ export interface BoardLink {
   sourceRef: string; note: string; evidence: BoardLinkEvidence[]; createdAt: string; updatedAt: string;
 }
 export interface Board { nodes: BoardNode[]; links: BoardLink[] }
+
+// ---- portfolio and flows (mirrors backend/pkg/portfolio)
+export interface PortfolioAsset {
+  kind: string; symbol: string; name: string; tokenAddress?: string; balance: string; decimals: number;
+  priced: boolean; priceUsd?: number; valueUsd?: number; priceAt?: string; priceSource?: string;
+}
+export interface WalletPortfolio {
+  network: string; address: string; assets: PortfolioAsset[]; pricedValueUsd: number; pricedCount: number; unpricedCount: number;
+  asOf: string; provenance: Provenance[]; notes: string[];
+}
+export interface EntityWalletValue {
+  addressId: string; network: string; address: string; label: string; status: AttributionStatus; confidence: Confidence;
+  portfolio?: WalletPortfolio; error?: string;
+}
+export interface EntityPortfolio {
+  entityId: string; name: string; asOf: string; wallets: EntityWalletValue[]; strongUsd: number; allUsd: number;
+  byStatusUsd: Record<string, number>; skipped: string[]; notes: string[];
+}
+export interface Flows {
+  network: string; address: string; symbol: string; decimals: number; pagesLoaded: number; historyExhausted: boolean;
+  transferCount: number; failedExcluded: number; from?: string; to?: string; inflow: string; outflow: string; net: string;
+  inflowUsd: number; outflowUsd: number; netUsd: number; valuedCount: number; unvaluedCount: number; qualification: string[]; provenance: Provenance[];
+}

@@ -2,7 +2,7 @@ import { useSettings } from '@/state/settingsStore';
 import { request } from './client';
 import type {
   ActivityPage, AddressSummary, AuditEntry, Case, CaseStatus, ChainResult, ChainTx, CustodyEvent,
-  AddressAttribution, AddressInput, BackupResult, Board, BoardClaim, Entity, EntityInput, Evidence, Finding, NetworkInfo, SearchHit, GraphSnapshot, GraphSnapshotSummary, Label, Note, ReportBundle, RestoreStatus, StageResult,
+  AddressAttribution, AddressInput, BackupResult, EntityPortfolio, Flows, WalletPortfolio, Board, BoardClaim, Entity, EntityInput, Evidence, Finding, NetworkInfo, SearchHit, GraphSnapshot, GraphSnapshotSummary, Label, Note, ReportBundle, RestoreStatus, StageResult,
 } from './types';
 
 const actor = (): string | undefined => useSettings.getState().analyst.trim() || undefined;
@@ -35,6 +35,11 @@ export const api = {
     verify: (id: string) => request<Evidence>('POST', `/api/evidence/${enc(id)}/verify`, { actor: actor() }),
     custody: (id: string) =>
       request<{ events: CustodyEvent[]; chain: ChainResult }>('GET', `/api/evidence/${enc(id)}/custody`),
+  },
+  portfolio: {
+    wallet: (address: string, network = 'ethereum-mainnet') => request<WalletPortfolio>('GET', `/api/portfolio/wallet?network=${enc(network)}&address=${enc(address)}`),
+    flows: (address: string, network = 'ethereum-mainnet', pages = 2) => request<Flows>('GET', `/api/portfolio/flows?network=${enc(network)}&address=${enc(address)}&pages=${pages}`),
+    entity: (id: string) => request<EntityPortfolio>('GET', `/api/entities/${enc(id)}/portfolio`),
   },
   search: (q: string) => request<SearchHit[]>('GET', `/api/search?q=${enc(q)}`),
   chain: {

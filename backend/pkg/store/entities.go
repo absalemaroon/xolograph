@@ -293,8 +293,8 @@ func (s *Store) ListEntities(ctx context.Context, q string) ([]Entity, error) {
 	q = strings.TrimSpace(q)
 	query, args := entitySelect, []any{}
 	if q != "" {
-		like := "%" + strings.ToLower(q) + "%"
-		query += ` WHERE lower(e.name) LIKE ? OR lower(e.tags) LIKE ? OR e.id IN (SELECT entity_id FROM entity_addresses WHERE lower(address) LIKE ? OR lower(label) LIKE ?)`
+		like := "%" + escapeLike(strings.ToLower(q)) + "%" // % and _ in the query are literal characters
+		query += ` WHERE lower(e.name) LIKE ? ESCAPE '\' OR lower(e.tags) LIKE ? ESCAPE '\' OR e.id IN (SELECT entity_id FROM entity_addresses WHERE lower(address) LIKE ? ESCAPE '\' OR lower(label) LIKE ? ESCAPE '\')`
 		args = append(args, like, like, like, like)
 	}
 	rows, err := s.DB.QueryContext(ctx, query+` ORDER BY e.updated_at DESC LIMIT 500`, args...)

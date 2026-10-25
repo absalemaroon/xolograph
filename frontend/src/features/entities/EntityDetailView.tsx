@@ -10,6 +10,7 @@ import { ActivityTable } from '../explorer/ActivityTable';
 import { AttachModal } from '../explorer/AttachModal';
 import type { AttachSpec } from '../explorer/AttachModal';
 import { ProvenanceList } from '../explorer/Provenance';
+import { EntityPortfolioTab } from '../portfolio/EntityPortfolioTab';
 import { AddressModal } from './AddressModal';
 import { AttributionBadge } from './AttributionBadge';
 import { ConfirmModal } from './ConfirmModal';
@@ -18,10 +19,10 @@ import { IdentifierModal } from './IdentifierModal';
 import { LinkEvidenceModal } from './LinkEvidenceModal';
 import { STATUSES, explorerSupported, graphSupported, networkLabel, pretty } from './constants';
 
-type Tab = 'overview' | 'wallets' | 'identifiers' | 'evidence' | 'activity';
+type Tab = 'overview' | 'wallets' | 'identifiers' | 'evidence' | 'activity' | 'portfolio';
 const TABS: { id: Tab; label: string }[] = [
   { id: 'overview', label: 'Overview' }, { id: 'wallets', label: 'Wallets' }, { id: 'identifiers', label: 'Identifiers' },
-  { id: 'evidence', label: 'Evidence' }, { id: 'activity', label: 'Activity' },
+  { id: 'evidence', label: 'Evidence' }, { id: 'activity', label: 'Activity' }, { id: 'portfolio', label: 'Portfolio' },
 ];
 
 export function EntityDetailView({ id }: { id: string }) {
@@ -67,6 +68,7 @@ export function EntityDetailView({ id }: { id: string }) {
       {tab === 'identifiers' && <Identifiers e={e} onChange={reload} />}
       {tab === 'evidence' && <EvidenceTab e={e} onChange={reload} />}
       {tab === 'activity' && <Activity e={e} />}
+      {tab === 'portfolio' && <EntityPortfolioTab entityId={e.id} walletCount={e.addressCount} />}
 
       {editing && <EntityFormModal entity={e} onClose={() => setEditing(false)} onSaved={reload} />}
       {deleting && (

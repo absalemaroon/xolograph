@@ -7,7 +7,7 @@
 | 3 | Entity wallet graph: multi-seed, entity labels on nodes, filters, inspector, saved views | Written; run CI to verify |
 | 4 | Case relationship board (facts vs hypotheses, evidence-backed links) | Written; run CI to verify |
 | 5 | Multi-chain explorer (EVM family, Solana, Bitcoin), universal search, provider registry | Written; run CI to verify (see docs/NETWORKS.md) |
-| 6 | Portfolio and qualified P&L | Planned |
+| 6 | Portfolio, valuation and qualified flows (no P&L figure; see docs/PORTFOLIO.md) | Written; run CI to verify |
 | 7 | Tools: file and metadata inspector | Planned |
 | 8 | Hardening, packaging, docs | Planned |
 

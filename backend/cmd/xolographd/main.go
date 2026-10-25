@@ -22,6 +22,7 @@ import (
 
 	"github.com/xolograph/backend/pkg/api"
 	"github.com/xolograph/backend/pkg/chain"
+	"github.com/xolograph/backend/pkg/prices"
 	"github.com/xolograph/backend/pkg/store"
 )
 
@@ -59,7 +60,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("listen: %v", err)
 	}
-	srv := &http.Server{Handler: api.NewMulti(st, *token, buildRegistry(*rpcURL, *historyURL)).Handler(), ReadHeaderTimeout: 10 * time.Second}
+	srv := &http.Server{Handler: buildServer(st, *token, buildRegistry(*rpcURL, *historyURL)).Handler(), ReadHeaderTimeout: 10 * time.Second}
 
 	_ = json.NewEncoder(os.Stdout).Encode(map[string]string{"addr": ln.Addr().String(), "token": *token})
 
@@ -162,4 +163,15 @@ func buildRegistry(ethRPC, ethHistory string) *chain.Registry {
 			HasHistory: true, Endpoint: hostOf(base)}, chain.NewBitcoin(base))
 	}
 	return reg
+}
+
+// buildServer wires the API. Prices are on by default (CoinGecko public API); XOLOGRAPH_PRICES=off disables them,
+// XOLOGRAPH_PRICE_URL overrides the endpoint and XOLOGRAPH_PRICE_KEY sets an optional demo/pro API key.
+func buildServer(st *store.Store, token string, reg *chain.Registry) *api.Server {
+	srv := api.NewMulti(st, token, reg)
+	switch strings.ToLower(os.Getenv("XOLOGRAPH_PRICES")) {
+	case "off", "none", "disabled":
+		return srv
+	}
+	return srv.WithPrices(prices.NewCoinGecko(os.Getenv("XOLOGRAPH_PRICE_URL"), os.Getenv("XOLOGRAPH_PRICE_KEY")))
 }

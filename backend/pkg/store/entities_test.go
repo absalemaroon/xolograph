@@ -272,8 +272,18 @@ func TestMoreNetworksAndLocalSearch(t *testing.T) {
 	if err != nil || !kinds["ENTITY"] || !kinds["CASE"] {
 		t.Fatalf("search: %+v %v", hits, err)
 	}
-	// LIKE wildcards in the query are literal, so "%" does not match everything.
-	if hits, _ := s.SearchLocal(ctx, "zz%"); len(hits) != 0 {
-		t.Fatalf("wildcard leaked: %+v", hits)
+	// LIKE wildcards in the query are literal characters. ("zz" would legitimately match the Solana address above,
+	// which contains "zz"; the wildcard checks below use strings that appear nowhere.)
+	if hits, _ := s.SearchLocal(ctx, "%%"); len(hits) != 0 {
+		t.Fatalf("%% leaked as a wildcard: %+v", hits)
+	}
+	if hits, _ := s.SearchLocal(ctx, "c_ld"); len(hits) != 0 {
+		t.Fatalf("_ leaked as a single-character wildcard: %+v", hits)
+	}
+	if hits, _ := s.SearchLocal(ctx, "100%"); len(hits) == 0 {
+		t.Fatal("a literal % in a name must still be searchable")
+	}
+	if ents, _ := s.ListEntities(ctx, "c_ld"); len(ents) != 0 {
+		t.Fatalf("ListEntities wildcard leak: %+v", ents)
 	}
 }

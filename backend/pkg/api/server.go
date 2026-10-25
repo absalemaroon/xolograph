@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/xolograph/backend/pkg/chain"
+	"github.com/xolograph/backend/pkg/prices"
 	"github.com/xolograph/backend/pkg/store"
 )
 
@@ -27,7 +28,11 @@ type Server struct {
 	token string
 	chain ChainProvider // may be nil: chain endpoints then answer 503
 	reg   *chain.Registry // multi-network registry; when set it takes precedence over chain
+	px    prices.Provider // nil when prices are disabled
 }
+
+// WithPrices enables valuation. Without it portfolios list holdings but value nothing.
+func (s *Server) WithPrices(px prices.Provider) *Server { s.px = px; return s }
 
 func New(st *store.Store, token string, cp ChainProvider) *Server {
 	return &Server{st: st, token: token, chain: cp}
@@ -105,6 +110,9 @@ func (s *Server) Handler() http.Handler {
 	m.HandleFunc("POST /api/cases/{id}/findings", s.addFinding)
 	m.HandleFunc("POST /api/evidence/{id}/verify", s.verifyEvidence)
 	m.HandleFunc("GET /api/evidence/{id}/custody", s.custody)
+	m.HandleFunc("GET /api/portfolio/wallet", s.walletPortfolio)
+	m.HandleFunc("GET /api/portfolio/flows", s.walletFlows)
+	m.HandleFunc("GET /api/entities/{id}/portfolio", s.entityPortfolio)
 	m.HandleFunc("GET /api/chain/networks", s.chainNetworks)
 	m.HandleFunc("GET /api/search", s.search)
 	m.HandleFunc("GET /api/chain/address/{addr}", s.chainAddress)
@@ -183,7 +191,7 @@ func fail(w http.ResponseWriter, err error) {
 		writeErr(w, 404, "not found")
 	case errors.Is(err, store.ErrInvalid), errors.Is(err, chain.ErrInvalid):
 		writeErr(w, 400, err.Error())
-	case errors.Is(err, chain.ErrUpstream):
+	case errors.Is(err, chain.ErrUpstream), errors.Is(err, prices.ErrUpstream):
 		log.Printf("upstream error: %v", err)
 		writeErr(w, 502, err.Error())
 	default:

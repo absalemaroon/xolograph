@@ -136,3 +136,5 @@ func (r *RPC) Call(ctx context.Context, method string, params ...any) (json.RawM
 		Coverage: "Node state at query time; depends on the node's pruning policy.",
 	}, nil
 }
+
+func jsonUnmarshal(b []byte, v any) error { return json.Unmarshal(b, v) }

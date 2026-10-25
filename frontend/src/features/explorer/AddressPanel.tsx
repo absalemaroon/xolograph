@@ -10,6 +10,8 @@ import { useNav } from '@/state/navStore';
 import { ActivityTable } from './ActivityTable';
 import { AttachModal } from './AttachModal';
 import type { AttachSpec } from './AttachModal';
+import { FlowsPanel } from '../portfolio/FlowsPanel';
+import { HoldingsPanel } from '../portfolio/HoldingsPanel';
 import { EntityAttributions } from '../entities/EntityAttributions';
 import { LabelModal } from './LabelModal';
 import { ProvenanceList } from './Provenance';
@@ -61,6 +63,9 @@ export function AddressPanel({ address, network, info }: { address: string; netw
       </Panel>
 
       <EntityAttributions address={s.address} network={network} />
+
+      <HoldingsPanel key={`h-${network}-${s.address}`} address={s.address} network={network} />
+      {(!info || info.hasHistory) && <FlowsPanel key={`f-${network}-${s.address}`} address={s.address} network={network} />}
 
       {(labels.data ?? []).length > 0 && (
         <Panel title="Analyst labels (your cases)" flush>
