@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/xolograph/backend/pkg/chain"
+	"github.com/xolograph/backend/pkg/inspect"
 	"github.com/xolograph/backend/pkg/prices"
 	"github.com/xolograph/backend/pkg/store"
 )
@@ -110,6 +111,8 @@ func (s *Server) Handler() http.Handler {
 	m.HandleFunc("POST /api/cases/{id}/findings", s.addFinding)
 	m.HandleFunc("POST /api/evidence/{id}/verify", s.verifyEvidence)
 	m.HandleFunc("GET /api/evidence/{id}/custody", s.custody)
+	m.HandleFunc("POST /api/tools/inspect", s.inspectFile)
+	m.HandleFunc("POST /api/evidence/{id}/inspect", s.inspectEvidence)
 	m.HandleFunc("GET /api/portfolio/wallet", s.walletPortfolio)
 	m.HandleFunc("GET /api/portfolio/flows", s.walletFlows)
 	m.HandleFunc("GET /api/entities/{id}/portfolio", s.entityPortfolio)
@@ -189,7 +192,7 @@ func fail(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, store.ErrNotFound), errors.Is(err, chain.ErrNotFound):
 		writeErr(w, 404, "not found")
-	case errors.Is(err, store.ErrInvalid), errors.Is(err, chain.ErrInvalid):
+	case errors.Is(err, store.ErrInvalid), errors.Is(err, chain.ErrInvalid), errors.Is(err, inspect.ErrInvalid):
 		writeErr(w, 400, err.Error())
 	case errors.Is(err, chain.ErrUpstream), errors.Is(err, prices.ErrUpstream):
 		log.Printf("upstream error: %v", err)

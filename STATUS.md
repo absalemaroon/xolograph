@@ -14,6 +14,7 @@
 | Case board (v5): items, facts vs hypotheses, evidence-backed links | Phase 4 (written, unverified) |
 | Multi-chain Explorer (EVM x10, Solana, Bitcoin) + universal search: see docs/NETWORKS.md | Phase 5 (written, unverified; default endpoints never hit from the sandbox) |
 | Portfolio, entity portfolio, net flows; CoinGecko prices: see docs/PORTFOLIO.md | Phase 6 (written, unverified) |
+| File & Metadata Inspector (Tools): see docs/INSPECTOR.md | Phase 7 (written, unverified) |
 | Backup & restore (verified archive, staged restore, pre-restore copy, audited) | Stage 5 |
 | Signed auto-update (opt-in feature + secrets), Windows/macOS signing wiring | Stage 5 (needs your keys/certificates) |
 

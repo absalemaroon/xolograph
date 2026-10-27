@@ -7,6 +7,7 @@ import { ExplorerView } from '@/features/explorer/ExplorerView';
 import { GraphView } from '@/features/graph/GraphView';
 import { OverviewView } from '@/features/overview/OverviewView';
 import { ReportsView } from '@/features/reports/ReportsView';
+import { ToolsView } from '@/features/tools/ToolsView';
 import { SettingsView } from '@/features/settings/SettingsView';
 import { useNav } from '@/state/navStore';
 
@@ -21,6 +22,7 @@ export function App() {
       {view === 'explorer' && <ExplorerView />}
       {view === 'graph' && <GraphView />}
       {view === 'entities' && <EntitiesView />}
+      {view === 'tools' && <ToolsView />}
       {view === 'reports' && <ReportsView />}
       {view === 'settings' && <SettingsView />}
     </AppShell>

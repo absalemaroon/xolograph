@@ -148,3 +148,22 @@ export interface Flows {
   transferCount: number; failedExcluded: number; from?: string; to?: string; inflow: string; outflow: string; net: string;
   inflowUsd: number; outflowUsd: number; netUsd: number; valuedCount: number; unvaluedCount: number; qualification: string[]; provenance: Provenance[];
 }
+
+// ---- file inspector (mirrors backend/pkg/inspect)
+export interface InspectTypeInfo {
+  kind: string; label: string; mime: string; category: string; basis: string; declaredExtension: string;
+  extensionMatches?: boolean; sniffedMime?: string;
+}
+export interface InspectField { group: string; name: string; value: string }
+export interface InspectWarning { level: 'sensitive' | 'caution' | 'info'; code: string; message: string }
+export interface InspectionReport {
+  name: string; sizeBytes: number;
+  hashes: { sha256: string; sha512: string; sha1: string; md5: string };
+  type: InspectTypeInfo;
+  image?: { format: string; width: number; height: number };
+  metadata: InspectField[];
+  gps?: { latitude: number; longitude: number; altitudeMeters?: number };
+  integrity?: { algorithm: string; expected: string; actual: string; match: boolean };
+  warnings: InspectWarning[]; limitations: string[];
+  parsedBytes: number; truncated: boolean; inspectedAt: string; toolVersion: string;
+}

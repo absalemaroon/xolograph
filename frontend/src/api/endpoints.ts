@@ -2,7 +2,7 @@ import { useSettings } from '@/state/settingsStore';
 import { request } from './client';
 import type {
   ActivityPage, AddressSummary, AuditEntry, Case, CaseStatus, ChainResult, ChainTx, CustodyEvent,
-  AddressAttribution, AddressInput, BackupResult, EntityPortfolio, Flows, WalletPortfolio, Board, BoardClaim, Entity, EntityInput, Evidence, Finding, NetworkInfo, SearchHit, GraphSnapshot, GraphSnapshotSummary, Label, Note, ReportBundle, RestoreStatus, StageResult,
+  AddressAttribution, AddressInput, BackupResult, InspectionReport, EntityPortfolio, Flows, WalletPortfolio, Board, BoardClaim, Entity, EntityInput, Evidence, Finding, NetworkInfo, SearchHit, GraphSnapshot, GraphSnapshotSummary, Label, Note, ReportBundle, RestoreStatus, StageResult,
 } from './types';
 
 const actor = (): string | undefined => useSettings.getState().analyst.trim() || undefined;
@@ -35,6 +35,10 @@ export const api = {
     verify: (id: string) => request<Evidence>('POST', `/api/evidence/${enc(id)}/verify`, { actor: actor() }),
     custody: (id: string) =>
       request<{ events: CustodyEvent[]; chain: ChainResult }>('GET', `/api/evidence/${enc(id)}/custody`),
+  },
+  tools: {
+    inspectFile: (path: string, expectedHash = '') => request<InspectionReport>('POST', '/api/tools/inspect', { path, expectedHash }),
+    inspectEvidence: (id: string, expectedHash = '') => request<InspectionReport>('POST', `/api/evidence/${enc(id)}/inspect`, { expectedHash }),
   },
   portfolio: {
     wallet: (address: string, network = 'ethereum-mainnet') => request<WalletPortfolio>('GET', `/api/portfolio/wallet?network=${enc(network)}&address=${enc(address)}`),

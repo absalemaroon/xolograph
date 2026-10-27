@@ -1,4 +1,4 @@
-import { Activity, FileText, FolderLock, Gauge, Network, ScrollText, Search, Settings, Users } from 'lucide-react';
+import { Activity, FileSearch, FileText, FolderLock, Gauge, Network, ScrollText, Search, Settings, Users } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { ViewId } from '@/state/navStore';
 
@@ -23,6 +23,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { id: 'entities', label: 'Entities', icon: Users },
     ],
   },
+  { title: 'Tools', items: [{ id: 'tools', label: 'File Inspector', icon: FileSearch }] },
   { title: 'Output', items: [{ id: 'reports', label: 'Reports', icon: FileText }] },
   { title: 'System', items: [{ id: 'settings', label: 'Settings', icon: Settings }] },
 ];

@@ -248,3 +248,11 @@ func (s *Server) search(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, 200, v)
 }
+
+// decodeOptional reads an optional JSON body, ignoring an empty one.
+func decodeOptional(r *http.Request, v any) error {
+	if r.Body == nil || r.ContentLength == 0 {
+		return nil
+	}
+	return json.NewDecoder(r.Body).Decode(v)
+}

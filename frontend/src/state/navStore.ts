@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 export type ViewId =
   | 'overview' | 'cases' | 'evidence' | 'audit'
-  | 'explorer' | 'graph' | 'entities' | 'reports' | 'settings';
+  | 'explorer' | 'graph' | 'entities' | 'tools' | 'reports' | 'settings';
 
 interface NavState {
   view: ViewId;

@@ -230,3 +230,17 @@ func (s *Store) evidencePath(stored string) string {
 	}
 	return stored
 }
+
+// EvidenceFile returns the on-disk path and recorded SHA-256 of a vault item so it can be inspected read-only.
+// It does not change the item's status or custody record.
+func (s *Store) EvidenceFile(ctx context.Context, id string) (path, recordedSHA256 string, err error) {
+	ev, err := s.GetEvidence(ctx, id)
+	if err != nil {
+		return "", "", err
+	}
+	p := s.evidencePath(ev.StoredPath)
+	if p == "" {
+		return "", "", fmt.Errorf("%w: stored path is outside the data directory", ErrInvalid)
+	}
+	return p, ev.SHA256, nil
+}

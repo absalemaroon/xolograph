@@ -8,7 +8,7 @@
 | 4 | Case relationship board (facts vs hypotheses, evidence-backed links) | Written; run CI to verify |
 | 5 | Multi-chain explorer (EVM family, Solana, Bitcoin), universal search, provider registry | Written; run CI to verify (see docs/NETWORKS.md) |
 | 6 | Portfolio, valuation and qualified flows (no P&L figure; see docs/PORTFOLIO.md) | Written; run CI to verify |
-| 7 | Tools: file and metadata inspector | Planned |
+| 7 | Tools: file and metadata inspector (docs/INSPECTOR.md) | Written; run CI to verify |
 | 8 | Hardening, packaging, docs | Planned |
 
 ## Entity model (v3 migration)
